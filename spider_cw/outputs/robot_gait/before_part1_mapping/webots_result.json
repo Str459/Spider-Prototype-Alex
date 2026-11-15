@@ -1,0 +1,14 @@
+{
+ "cycles_measured": 5,
+ "speed_mps": 0.11088013773872767,
+ "sideways_per_m": -0.014058215036633737,
+ "heading_change_deg": 0.12554759286216982,
+ "height_mean_m": 0.4318041100797341,
+ "bounce_mm": 5.497337517578163,
+ "max_tilt_deg": 2.298354037644825,
+ "min_swing_clearance_cm": 6.456419924311736,
+ "slide_per_m_walked": 0.6531935918640128,
+ "slide_per_step_cm": 3.6213097717968004,
+ "self_contacts": 0,
+ "total_forward_m": 2.6422348562638356
+}

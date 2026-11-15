@@ -1,0 +1,40 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/appearances/protos/Parquetry.proto"
+EXTERNPROTO "../protos/SpiderOctopod.proto"
+
+WorldInfo {
+  info [
+    "Plays the GA-evolved robot gait in spider_cw/outputs/robot_gait/selected (chosen by select_in_webots.py)."
+    "To play another candidate set SpiderOctopod > controllerArgs to e.g. \"seed3\"."
+  ]
+  title "Spider GA gait"
+}
+Viewpoint {
+  orientation 0.11511836129403648 -0.019999233644118285 -0.9931504385271265 3.4832575945615307
+  position 5.0 -2.0 1.6
+  follow "SpiderOctopod"
+  followType "Pan and Tilt Shot"
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+  floorSize 100 100
+  floorAppearance Parquetry {
+    type "light strip"
+  }
+}
+SpiderOctopod {
+  translation 0 0 0.16
+  controller "gait_player"
+  controllerArgs [
+    "selected"
+  ]
+  supervisor TRUE
+  selfCollision TRUE
+}

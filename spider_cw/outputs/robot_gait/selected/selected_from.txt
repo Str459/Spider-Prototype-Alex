@@ -1,0 +1,1 @@
+seed3 (physics score 0.276); all candidates in ../selection.csv

@@ -1,0 +1,30 @@
+=== Gait GA "seed4": pop 100, tournament selection, twopoint crossover, seed 4 ===
+gen    0 | best  -3.6768 | mean -24.8704 | diversity 0.291 | sigma 0.100
+gen   10 | best   3.9501 | mean   1.7115 | diversity 0.143 | sigma 0.085
+gen   20 | best   7.0820 | mean   4.9629 | diversity 0.084 | sigma 0.072
+gen   30 | best   8.9846 | mean   6.9353 | diversity 0.068 | sigma 0.063
+gen   40 | best   9.9507 | mean   8.3290 | diversity 0.063 | sigma 0.056
+gen   50 | best  10.4748 | mean   8.3805 | diversity 0.043 | sigma 0.048
+gen   60 | best  10.7587 | mean   9.2429 | diversity 0.030 | sigma 0.044
+gen   70 | best  10.7753 | mean   8.8818 | diversity 0.029 | sigma 0.042
+gen   80 | best  11.0252 | mean   9.1016 | diversity 0.032 | sigma 0.039
+gen   90 | best  11.2232 | mean   9.2248 | diversity 0.029 | sigma 0.038
+gen  100 | best  11.3398 | mean   9.4018 | diversity 0.028 | sigma 0.036
+gen  110 | best  11.3722 | mean   9.5360 | diversity 0.025 | sigma 0.035
+gen  120 | best  11.4694 | mean   9.9366 | diversity 0.025 | sigma 0.034
+gen  130 | best  11.4694 | mean   9.6337 | diversity 0.024 | sigma 0.034
+gen  140 | best  11.4770 | mean   9.3225 | diversity 0.032 | sigma 0.044
+gen  150 | best  11.4770 | mean   9.3740 | diversity 0.032 | sigma 0.044
+gen  160 | best  11.4881 | mean   9.5352 | diversity 0.029 | sigma 0.043
+gen  170 | best  11.4999 | mean   9.8482 | diversity 0.028 | sigma 0.041
+gen  180 | best  11.5345 | mean   9.6622 | diversity 0.028 | sigma 0.039
+gen  190 | best  11.5359 | mean  10.2877 | diversity 0.029 | sigma 0.038
+gen  200 | best  11.5538 | mean  10.3128 | diversity 0.025 | sigma 0.036
+gen  210 | best  11.5995 | mean  10.1027 | diversity 0.026 | sigma 0.034
+gen  220 | best  11.5995 | mean  10.0518 | diversity 0.022 | sigma 0.034
+gen  230 | best  11.6050 | mean  10.0189 | diversity 0.027 | sigma 0.043
+gen  240 | best  11.6175 | mean   8.8211 | diversity 0.028 | sigma 0.042
+gen  250 | best  11.6175 | mean   9.8042 | diversity 0.026 | sigma 0.041
+Stopped after 250 generations (maxGen), 35.7 s. Best score 11.6175
+Distance per cycle 4.242, min stability margin 0.460, frames with < 4 feet: 0.0%
+Saved to C:\Users\stroe\OneDrive\Desktop\Spider\Spider_world_demo\spider_cw\part1_ga\..\outputs\part1\seed4

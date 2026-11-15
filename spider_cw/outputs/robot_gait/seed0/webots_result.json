@@ -1,0 +1,18 @@
+{
+ "cycles_measured": 5,
+ "speed_mps": 0.28931398276565146,
+ "sideways_per_m": 0.004442799517766325,
+ "heading_change_deg": 0.02537142309055651,
+ "startup_heading_change_deg": 0.23239708860007868,
+ "startup_max_tilt_deg": 0.5682235380208753,
+ "startup_bounce_mm": 2.8815417321577206,
+ "startup_slide_per_step_cm": 0.5546163232409075,
+ "height_mean_m": 0.41294106190654867,
+ "bounce_mm": 1.8829363215734354,
+ "max_tilt_deg": 0.5758865476440707,
+ "min_swing_clearance_cm": 13.060273766114436,
+ "slide_per_m_walked": 0.07377911988466822,
+ "slide_per_step_cm": 0.5412055316483573,
+ "self_contacts": 0,
+ "total_forward_m": 4.442168387633677
+}

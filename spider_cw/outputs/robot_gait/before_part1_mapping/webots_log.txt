@@ -1,0 +1,10 @@
+[gait_player] gait before_part1_mapping: 300 frames, period 4.00 s, stride 0.000 m, duty 0.50, step height 0.120 m, body height 0.45 m, planned speed 0.000 m/s
+[gait_player] stood up: body height 0.479 m
+[gait_player] walking from x=-0.007 y=0.064
+[gait_player] cycle 1: forward +0.425 m, sideways -0.038 m, heading +0.0 deg | height 0.429 m (bounce 7.4 mm), max tilt 2.1 deg | lowest swing 6.5 cm (R3) | planted feet slid 21.3 cm over 8 steps | self-contacts 0 (floor contacts/step 5.1)
+[gait_player] cycle 2: forward +0.443 m, sideways -0.007 m, heading +0.0 deg | height 0.432 m (bounce 5.4 mm), max tilt 2.2 deg | lowest swing 6.5 cm (R3) | planted feet slid 28.7 cm over 8 steps | self-contacts 0 (floor contacts/step 5.2)
+[gait_player] cycle 3: forward +0.444 m, sideways -0.007 m, heading +0.1 deg | height 0.432 m (bounce 5.5 mm), max tilt 2.3 deg | lowest swing 6.5 cm (R3) | planted feet slid 29.0 cm over 8 steps | self-contacts 0 (floor contacts/step 5.2)
+[gait_player] cycle 4: forward +0.444 m, sideways -0.006 m, heading +0.1 deg | height 0.432 m (bounce 5.5 mm), max tilt 2.3 deg | lowest swing 6.5 cm (R3) | planted feet slid 29.0 cm over 8 steps | self-contacts 0 (floor contacts/step 5.2)
+[gait_player] cycle 5: forward +0.444 m, sideways -0.006 m, heading +0.1 deg | height 0.432 m (bounce 5.5 mm), max tilt 2.3 deg | lowest swing 6.5 cm (R3) | planted feet slid 29.0 cm over 8 steps | self-contacts 0 (floor contacts/step 5.2)
+[gait_player] cycle 6: forward +0.444 m, sideways -0.006 m, heading +0.1 deg | height 0.432 m (bounce 5.5 mm), max tilt 2.3 deg | lowest swing 6.5 cm (R3) | planted feet slid 29.1 cm over 8 steps | self-contacts 0 (floor contacts/step 5.2)
+[gait_player] RESULT {"cycles_measured": 5, "speed_mps": 0.11088013773872767, "sideways_per_m": -0.014058215036633737, "heading_change_deg": 0.12554759286216982, "height_mean_m": 0.4318041100797341, "bounce_mm": 5.497337517578163, "max_tilt_deg": 2.298354037644825, "min_swing_clearance_cm": 6.456419924311736, "slide_per_m_walked": 0.6531935918640128, "slide_per_step_cm": 3.6213097717968004, "self_contacts": 0, "total_forward_m": 2.6422348562638356}

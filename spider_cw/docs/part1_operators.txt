@@ -1,0 +1,177 @@
+PART 1 - GA DESIGN AND GENETIC OPERATORS
+========================================
+Files: part1_ga/ga_run.m (loop), ga_selection.m, ga_crossover.m,
+ga_mutation.m, ga_default_config.m (every parameter), run_experiments.m.
+The GA is written from scratch; no toolbox is used.
+
+1. The loop (ga_run.m)
+----------------------
+  initialise  popSize chromosomes, each gene uniform in its bounds
+  evaluate    whole population at once (gait_fitness is vectorised)
+  repeat:
+    sort by fitness, record statistics (for the plots)
+    stop if: maxGen reached, OR no improvement for stallGenerations,
+             OR best >= targetFitness
+    adapt the mutation step sigma
+    keep the eliteCount best unchanged                       (elitism)
+    pick parents                                  (ga_selection.m)
+    recombine pairs of parents                    (ga_crossover.m)
+    mutate the children and repair them into bounds (ga_mutation.m)
+    evaluate the children; new population = elites + children
+The engine knows nothing about spiders: a problem is just bounds, which
+genes are circular, and an evaluate function. The same code runs Stage A
+(24 genes), Stage B (27 genes) and the sphere test in test_part1.m.
+The best chromosome ever seen is stored separately, so it is returned
+even when elitism is switched off.
+
+2. Parameters (ga_default_config.m) and why
+-------------------------------------------
+popSize 100        About 4x the number of genes. Because a whole population
+                   is scored in one vectorised call, 250 generations take
+                   about 13 s, so there was no need to go smaller.
+maxGen 250,        Runs are still creeping upwards at 250 but the gait no
+stallGen 80        longer changes visibly (see fitness.png).
+eliteCount 2       Guarantees the best never gets lost; small so that two
+                   individuals cannot take over the population.
+tournament, k=3    See 3.
+two-point,         See 4. Chosen from the experiments in section 7.
+crossoverRate 0.9
+mutationRate 0.15  About 4 of the 27 genes change per child.
+sigma0 0.10        Step = 10% of a gene's range at the start.
+adaptive sigma     x0.98 after every improving generation, x1.3 after
+in [0.01, 0.15]    every 15 stalled generations.
+seed               Every run is repeatable.
+Every parameter can be overridden by name: run_gait_ga('popSize', 200).
+
+3. Selection (ga_selection.m)
+-----------------------------
+Tournament (default): draw k = 3 chromosomes at random, keep the best.
+* Uses only the ORDER of scores. Our fitness is often negative (early
+  chromosomes are mostly penalties) and its scale changes during a run;
+  tournament does not care.
+* Pressure is set with one number: k = 2 is gentle, k = 5 greedy.
+* Cheap and fully vectorised.
+Roulette wheel (option): probability proportional to fitness. Needs the
+scores shifted to be positive ("windowing": subtract the worst). Weak
+point: when everyone has a similar score, everyone gets a similar slice,
+so pressure fades exactly when fine-tuning matters. On the sphere test
+(test_part1.m) it finished at 0.14 against tournament's 0.019.
+Rank (option): probability proportional to rank. Keeps roulette's idea
+without its scale problem (sphere test: 0.025).
+
+4. Crossover (ga_crossover.m)
+-----------------------------
+Two-point crossover (default): pick two cut points and swap the block of
+genes between them. Our genes are grouped per leg pair (6 genes each, then
+the 3 timing genes), so a block usually carries one or more complete leg
+settings from one parent to the child. A leg that already works is passed
+on intact instead of being averaged with a different one. It won the
+experiments in section 7 (11.61 vs 11.12 for blend).
+Blend crossover BLX-alpha (option, the original default): each child gene
+is uniform in the parents' interval widened by alpha = 0.3 on both sides.
+* Genes are real numbers. Children can land BETWEEN their parents (a stride
+  half-way between two good strides), which copying operators cannot do.
+* alpha > 0 lets children land a little outside the parents too, so the
+  population does not shrink just from recombining.
+* Phase genes are circular: the second parent's phase is first moved by a
+  whole cycle if that is closer, so 0.95 and 0.05 blend to around 0.0, not
+  0.5.
+Uniform (option): each gene from either parent, 50/50.
+One-point (option): one cut, swap everything after it.
+crossoverRate 0.9: one pair in ten is copied unchanged, giving good parents
+a chance to survive into the next generation besides the elites.
+
+5. Mutation (ga_mutation.m)
+---------------------------
+Each gene mutates with probability 0.15 by adding Gaussian noise with
+standard deviation sigma x (gene range). Scaling by the range makes one
+sigma mean the same for a phase gene (range 1) and a tibia gene (range 2).
+Afterwards genes are repaired: phases wrap round, others are clipped.
+
+Adaptive sigma: big steps explore early, small steps fine-tune later.
+* Shrink x0.98 after an improvement.
+* Grow x1.3 after 15 generations without one, to shake the population out
+  of a local optimum.
+* Tuning evidence: the first version allowed sigma up to 0.30 and grew it
+  x1.5 every 10 stalled generations. After a stall it pushed sigma to the
+  cap and the mean fitness fell from about 10 to 0 while the best stayed
+  flat: the population was being scattered at random rather than explored
+  near the best. Capping sigma at 0.15 and growing more gently fixed this
+  (compare outputs/part1/seed*/fitness.png).
+
+6. Results with the default settings (seeds 0-4)
+------------------------------------------------
+Tournament selection (k=3), two-point crossover, adaptive mutation:
+seed  fitness  distance/cycle  min margin  fewest feet down  phaseLR  phaseFB
+  0    11.60       4.27           0.43            4            0.50     0.80
+  1    11.20       4.11           0.40            4            0.50     0.77
+  2    11.57       4.28           0.28            4            0.50     0.36
+  3    12.07       4.39           0.31            4            0.59     0.75
+  4    11.62       4.24           0.46            4            0.54     0.75
+All five seeds walk (target was >= 1.0 per cycle with >= 4 feet down in
+every frame). Each run takes about 13 s of GA time on one core.
+(With the original blend crossover the same seeds scored 10.84-11.50 and
+walked 3.92-4.21 per cycle.)
+
+What the GA discovered by itself:
+* phaseLR settles at or near 0.5: the left and right legs of a pair step
+  in antiphase, as in real spiders.
+* phaseFB settles near 0.75-0.80 in four seeds and 0.36 in one: a wave of
+  steps running along each side, with the two sides alternating.
+* duty sits at its lower bound 0.5: exactly 4 feet down at any moment,
+  which is the minimum allowed, leaving the longest time to swing.
+* coxaSwing sits at its upper bound 0.5 for every pair in every seed:
+  bigger strides always pay while collisions are avoided. The bound, not
+  the fitness, limits stride length. Widening it is a possible extension.
+* coxaOffset is -0.45 to -0.5 (front pair) and +0.5 (rear pair) in every
+  seed: the front legs are swung back and the rear legs forward, i.e. both
+  turned towards the sides, which reduces slip (see part1_fitness.txt). The
+  middle pairs mostly follow the same pattern less strongly (about -0.24
+  and +0.21); seed 1 keeps them straight out (0.00 and +0.02).
+Different seeds find different phaseFB values with similar fitness, i.e.
+the landscape has several good optima, not one.
+
+7. Experiments: one component changed at a time (run_experiments.m)
+-------------------------------------------------------------------
+Each variant changes ONE setting from the baseline; 5 seeds each, 250
+generations. Plots: outputs/part1/experiments/convergence.png and
+final_scores.png. Raw numbers: summary.csv, runs.csv.
+
+The baseline here is the ORIGINAL default (blend crossover); the default
+was switched to two-point because of this table.
+
+variant          fitness (mean +- std)   distance/cycle   time/run
+baseline (blend)   11.12 +- 0.33           4.03            14 s
+roulette            7.64 +- 1.03           3.01            13 s
+rank                8.83 +- 1.25           3.43            11 s
+tournament k=5     11.20 +- 0.25           4.03            12 s
+uniform            11.35 +- 0.31           4.10            12 s
+two-point          11.61 +- 0.31           4.26            13 s
+no crossover        9.34 +- 0.70           3.53            14 s
+fixed sigma        10.55 +- 0.21           3.90            13 s
+no elitism         10.16 +- 0.57           3.83            14 s
+pop 50             10.00 +- 0.69           3.78             5 s
+pop 200            10.12 +- 1.13           3.81            26 s
+All 55 runs produced a walking gait (>= 1.0 per cycle, >= 4 feet down in
+every frame, never unstable), so the encoding + fitness are robust; the
+components decide HOW GOOD the walk gets.
+
+What this shows
+* Selection matters most. Tournament beat roulette by 3.5 fitness points
+  (about 1 unit of distance per cycle). Roulette loses pressure once the
+  population's scores are close, exactly as on the sphere test. Rank sits
+  in between. k = 5 gives the same mean as k = 3 with less spread.
+* Crossover clearly helps: switching it off costs 1.8 points. Two-point
+  crossover was the best variant overall (11.61), ahead of uniform (11.35)
+  and blend (11.12). Our genes are grouped per leg pair, so swapping
+  contiguous blocks passes a whole working leg setting to the child, which
+  helps more here than blending individual values. Two-point is now the
+  default, and the seed results in section 6 use it.
+* Adaptive mutation beats a fixed sigma (11.12 vs 10.55). Fixed sigma has
+  the smallest spread: it is consistent but cannot fine-tune.
+* Elitism matters: without it the best gait is regularly lost and
+  re-found, ending 1 point lower.
+* Population size: 100 was best for a fixed 250 generations. 50 has too
+  little variety; 200 converges more slowly (with tournament size 3 the
+  pressure is weaker in a bigger population) and costs twice the time, so
+  it needs more generations to pay off.

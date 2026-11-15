@@ -1,0 +1,128 @@
+WEBOTS WALKING GAIT (GA-EVOLVED FOR THE SPIDEROCTOPOD ROBOT)
+=============================================================
+Files: spider_cw/robot_gait/*.m (MATLAB, GA problem for the robot)
+       spider_cw/robot_gait/select_in_webots.py (physics selection)
+       controllers/gait_player/gait_player.py (plays + measures a gait)
+       worlds/spider_gait.wbt (self-collision ON)
+Backup of the previous version: spider_cw/backups/2026-11-15_webots_gait_v1/
+
+1. Robot facts (checked in protos/SpiderOctopod.proto and the world)
+--------------------------------------------------------------------
+* Forward is +x (legs L1/R1 sit at x = +0.4875). Left legs L1-L4 at +y,
+  right legs R1-R4 at -y, hips 0.325 m apart along each side.
+* Joints per leg: hip (axis tilted 45 deg, perpendicular to the coxa),
+  thigh and knee (about the coxa's x axis). Coxa 0.5 m pointing out and
+  45 deg up, thigh 0.6 m, tibia 0.7 m.
+* Limits on every leg: hip and thigh +-1.5708 rad, knee [-2, 1] rad.
+  Left and right joints are mirrored, so a symmetric gait can only use a
+  knee bend of +-1 rad.
+* Motors: 2 rad/s and 50 Nm. Mass 43 kg (body 15 kg + 8 x 3.5 kg legs).
+* Collision shapes: body box 1.3 x 0.4 x 0.3, coxa cylinder r 0.03,
+  thigh box 0.04 x 0.04, tibia cylinder r 0.02. Time step 32 ms.
+
+2. Why the old gait crawled / dragged (measured, not guessed)
+-------------------------------------------------------------
+The old controller copied the FOOT PATHS of the Part 1 MATLAB gait onto the
+robot. Measured in Webots with the same instrumented controller:
+    speed 0.11 m/s, planted feet slid 0.65 m per metre walked (3.6 cm per
+    step), lowest swing 6.5 cm, body bounce 5.5 mm, tilt up to 2.3 deg.
+Causes:
+a) Feet on arcs. In the MATLAB model a planted foot is pushed back by
+   turning the coxa, i.e. it moves on an arc round the hip. Eight feet on
+   eight different arcs cannot all stay still under one rigid body, so
+   they have to slide. (The Part 1 fitness already reported ~25-30% slip.)
+b) Ripple timing, no overlap. The Part 1 GA chose a front-to-back ripple
+   (phaseFB ~ 0.8) with duty exactly 0.5: legs step one after another and
+   there is never a moment with both groups down.
+c) Start: going from standing straight into the gait dragged all eight
+   planted feet to their starting positions at once.
+
+3. What changed
+---------------
+A GA problem built for THIS robot, using the unchanged Part 1 GA engine
+(part1_ga/ga_run.m, tournament selection, two-point crossover, adaptive
+mutation, elitism). Part 1 itself is untouched.
+
+Gait structure (robot_gait_decode.m) - the things that make it a walk:
+* Two alternating support groups as the starting point:
+  A = L1 L3 R2 R4, B = L2 L4 R1 R3. phaseB (delay of B) and wave (front-
+  to-back offset) are genes, so the GA could move away from strict
+  alternation - it did not (phaseB = 0.497-0.500 in every seed).
+* Stance: every planted foot moves in a straight line backwards at the
+  same speed -> the body is pushed forwards and no foot needs to slide.
+* Swing: the foot lifts with (1 - cos)/2 (zero vertical speed at lift-off
+  and touch-down), moves forwards on a cubic curve, and meets the ground
+  moving backwards at the stance speed ("ground-speed matching").
+* duty > 0.5: both groups are on the ground together for a short time at
+  every changeover (the evolved 0.52 gives ~4% of the cycle per change).
+* All three joints come from exact inverse kinematics (robot_ik.m) for the
+  foot path, so hip, thigh and knee always move together.
+* Start-up (robot_gait_startup.m): marching on the spot, then the stride
+  grows over three steps. A leg's stride only changes while it is in the
+  air, so planted feet never get dragged.
+
+Genes (robot_gait_genes.m), all evolved:
+  stride, stepHeight, duty, period, bodyHeight, reach, spread, phaseB,
+  wave, xShift, speedMatch.
+
+Fitness (robot_gait_fitness.m), checked on every frame of the cycle:
+  goal       forward speed = stride / (duty x period)
+  required   foot targets reachable; joints inside limits (0.05 rad margin);
+             joint speed <= 1.6 rad/s (80% of motor); static torque <= 42 Nm
+             (43 kg shared by the planted feet); neighbouring legs' coxa,
+             thigh and tibia >= 4 cm apart (self-collision); >= 4 feet down;
+             body centre >= 0.15 m inside the support polygon
+  costs      joint acceleration (smoothness); foot ground speed at contact
+  standing   stride 0 gives speed 0 PLUS a fixed "not walking" penalty
+             (score -5), so standing still can never be selected.
+
+Final selection (select_in_webots.py): every seed's best gait is run in
+Webots physics (self-collision on) and scored on MEASURED speed minus
+penalties for drift, heading change, tilt, bounce, foot sliding,
+self-contacts, low swings and a sunken body. The winner is copied to
+outputs/robot_gait/selected/, which the world plays by default.
+
+Tuning done on the way (and why):
+* bodyHeight lower bound 0.30 -> 0.42 m: the GA always takes the lowest
+  allowed height; 0.42 walked as well as 0.38 in Webots and keeps the
+  belly 0.27 m off the floor.
+* swingPad gene replaced by speedMatch; sliding measured as the NET
+  movement of each planted foot from touch-down to lift-off (summing every
+  32 ms increment counted physics jitter as sliding). Tested and rejected:
+  half speed and commanding 0.1 s ahead (motor-lag hypothesis) - neither
+  reduced sliding.
+
+4. Results verified in Webots (R2025a, headless, self-collision on)
+--------------------------------------------------------------------
+Five GA seeds, 5 steady cycles each after the 4 start-up cycles
+(outputs/robot_gait/selection.csv):
+
+candidate  speed   drift    heading  height  bounce  tilt   lowest   slide/   self-
+           m/s     m/m      deg      m       mm      deg    swing cm step cm  contacts
+seed3 *    0.300   +0.008   +0.07    0.413   1.8     0.56   15.4     0.50     0
+seed2      0.298   +0.008   +0.03    0.413   1.9     0.5    15.4     0.50     0
+seed0      0.289   -0.002   +0.03    0.413   1.9     0.6    13.1     0.54     0
+seed1      0.287   +0.008   -0.14    0.413   2.1     0.6    12.6     0.55     0
+seed4      0.283   +0.022   +0.19    0.413   2.4     0.5    13.0     0.90     0
+old gait   0.111   -0.014   +0.13    0.432   5.5     2.3    6.5      3.62     0
+(* selected)
+
+Start-up of the selected gait: worst tilt 0.7 deg, bounce 2.2 mm, sliding
+0.75 cm per step, heading change 0.4 deg.
+Screenshots during a steady cycle show one group's feet in the air while
+the other group carries the body, knees raised, body level.
+
+What was NOT verified: only flat ground; only straight walking (the gait
+cannot turn); the screenshots came from Webots' exportImage in a headless
+run, not from watching the GUI.
+
+5. How to run
+-------------
+Watch it: open worlds/spider_gait.wbt in Webots and press play. The console
+prints, every cycle, distance, drift, heading, height, bounce, tilt, the
+lowest swing, foot sliding and self-contacts.
+Play another candidate: set SpiderOctopod > controllerArgs to "seed2" etc.
+
+Re-evolve and re-select (from spider_cw/robot_gait):
+    matlab -batch "test_robot_gait; run_robot_gait_ga(0:4)"
+    python select_in_webots.py

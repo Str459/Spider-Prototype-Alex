@@ -1,0 +1,102 @@
+PART 1 - FITNESS FUNCTION
+=========================
+Files: part1_ga/gait_fitness.m (gait), part1_ga/fitness_config.m (settings
+and weights), part1_ga/support_margin.m (stability), part1_ga/pose_fitness.m
+(Stage A single pose).
+
+1. What "a good gait" means here
+--------------------------------
+The provided model has geometry but no physics, and the spec says we do not
+need to model physics. So the fitness judges a gait geometrically, in the
+body frame (+x forward, +z up), on all 300 frames of one cycle:
+
+  GOAL         walk forward as far as possible per cycle
+  REQUIREMENTS planted feet on the ground, nothing below the ground,
+               swinging feet lifted clear, at least 4 feet down at all
+               times, body statically stable, feet not colliding,
+               no sideways drift, little slipping
+
+2. How each term is measured
+----------------------------
+Ground height g = groundZ = -0.4 (the body hangs 0.4 above the ground).
+
+progress      Planted feet are assumed not to slide on the ground. So if the
+              planted feet move backwards relative to the body by d, the body
+              has moved forwards by d. Per frame, body velocity = minus the
+              mean displacement of the feet planted in this frame AND the
+              next. Summed over the cycle = distance walked per cycle.
+lateral       |sum of sideways velocity| over the cycle (drift).
+slip          How much the planted feet disagree with that average motion.
+              Zero would mean a perfectly rigid set of footholds.
+groundErr     Mean |z - g| of planted feet.
+penetration   Mean depth of any foot below the ground.
+clearanceDef  For each leg, how far the top of its swing falls short of
+              `clearance` (0.15). Stops "shuffling" steps.
+minMargin     Static stability: the smallest distance, over the cycle, from
+              the body centre (assumed centre of mass) to the edge of the
+              polygon made by the planted feet. Negative = would tip over.
+              support_margin.m sorts planted feet by angle round the body and
+              takes the signed distance to each edge, vectorised over the
+              whole population.
+instability   Mean shortfall below the required margin `minMargin` (0.3).
+stanceDef     FRACTION of frames with fewer than `minStance` (4) feet down.
+collision     Mean shortfall of the distance between neighbouring feet below
+              `footGap` (0.35), summed over the 8 neighbour pairs.
+effort        Mean squared joint speed: a small energy-like cost that prefers
+              smooth, unhurried motion when nothing else matters.
+
+3. How the terms are combined ("goal first")
+--------------------------------------------
+  score = 3 * progress  +  1 * min(minMargin, 0.3)
+        - 20 groundErr - 30 penetration - 10 clearanceDef - 20 instability
+        - 50 stanceDef - 1 slip - 2 lateral - 20 collision - 0.01 effort
+
+* Progress is the only term that keeps paying.
+* Every requirement costs nothing once it is met. A plain weighted sum of
+  "progress + stability" was tried in an earlier prototype: the GA bought a
+  slightly wider stance at the cost of all forward motion and stood still.
+  Capping the stability reward at 0.3 turns stability into a requirement
+  rather than a prize.
+* Weights are sized so that the typical size of each violation is worth
+  roughly as much as a useful amount of progress, e.g. a planted foot 5 cm
+  off the ground (20 x 0.05 = 1) costs about a third of a unit of walking.
+* stanceDef counts frames, with a heavy weight, because an earlier version
+  averaged the shortfall and one 3-foot frame in 300 cost just 0.008: the GA
+  happily accepted short dips to 3 feet.
+
+4. Tuning notes (what was tried and why)
+----------------------------------------
+* Frames scored: scoring only 60 frames per cycle was 5x faster but brief
+  3-foot moments fell between samples and showed up in the 300-frame
+  output. Scoring the exact 300 frames that are exported costs about 13 s
+  per run, which is affordable.
+* Slip weight 1 vs 3 (5 seeds each): weight 3 reduced slip only from about
+  1.25 to 0.95 per cycle, while distance fell from about 3.9 to 3.7. Slip is
+  mostly built into the encoding: a coxa turn moves a foot along an arc, and
+  legs that point diagonally move their feet partly sideways. The GA's
+  response is visible in the evolved gaits: it turns the front and rear legs
+  towards the sides, where an arc is closest to a straight backwards line.
+  We kept weight 1 and report the slip honestly.
+
+5. Target-speed mode (used to make Part 2 training data)
+--------------------------------------------------------
+fitness_config('targetSpeed') = s replaces 3 * progress with
+-5 * |progress - s|. Running the GA for several s produces a family of gaits
+at different speeds. The NN in Part 2 learns to map (phase in the cycle,
+desired speed) to 24 joint angles.
+
+6. Stage A: single standing pose (pose_fitness.m)
+-------------------------------------------------
+  score = 2 * min(margin, 1.5) - 20 groundErr - 30 penetration
+        - 2 symmetry - 20 collision
+with all 8 feet expected on the ground and symmetry measured as the mean
+mismatch between each left leg and its mirrored right partner.
+
+7. Assumptions and limitations
+------------------------------
+* Centre of mass at the body centre; legs are massless.
+* "Stable" means statically stable (no tipping if frozen). No dynamics,
+  friction or torque limits are modelled.
+* Foot collisions only check feet, not whole legs.
+* Progress assumes no slipping; the slip term measures how far that is from
+  true.
