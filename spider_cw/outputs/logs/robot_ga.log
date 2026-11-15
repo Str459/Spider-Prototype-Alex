@@ -1,0 +1,68 @@
+=== Robot gait GA, seed 0 ===
+gen    0 | best   1.3593 | mean -85.4749 | diversity 0.280 | sigma 0.100
+gen   25 | best   3.0732 | mean   2.2050 | diversity 0.049 | sigma 0.072
+gen   50 | best   3.3059 | mean   2.8304 | diversity 0.027 | sigma 0.060
+gen   75 | best   3.3979 | mean   2.7347 | diversity 0.021 | sigma 0.053
+gen  100 | best   3.3992 | mean   1.7559 | diversity 0.043 | sigma 0.087
+gen  125 | best   3.3995 | mean   2.3506 | diversity 0.033 | sigma 0.078
+gen  150 | best   3.3997 | mean   2.5302 | diversity 0.035 | sigma 0.074
+Stopped after 150 generations (maxGen), 9.6 s. Best score 3.3997
+=== Robot gait GA, seed 1 ===
+gen    0 | best   0.9832 | mean -56.3037 | diversity 0.293 | sigma 0.100
+gen   25 | best   2.3561 | mean   1.4011 | diversity 0.069 | sigma 0.072
+gen   50 | best   3.0375 | mean   2.6956 | diversity 0.034 | sigma 0.051
+gen   75 | best   3.1242 | mean   2.8297 | diversity 0.020 | sigma 0.041
+gen  100 | best   3.1578 | mean   2.9832 | diversity 0.014 | sigma 0.033
+gen  125 | best   3.1580 | mean   2.9547 | diversity 0.021 | sigma 0.040
+gen  150 | best   3.1580 | mean   2.9830 | diversity 0.018 | sigma 0.038
+Stopped after 150 generations (maxGen), 9.4 s. Best score 3.1580
+=== Robot gait GA, seed 2 ===
+gen    0 | best   0.8430 | mean -92.6452 | diversity 0.281 | sigma 0.100
+gen   25 | best   2.9816 | mean   2.2819 | diversity 0.034 | sigma 0.071
+gen   50 | best   3.2542 | mean   2.7883 | diversity 0.022 | sigma 0.052
+gen   75 | best   3.2931 | mean   2.9529 | diversity 0.016 | sigma 0.045
+gen  100 | best   3.2943 | mean   3.0682 | diversity 0.014 | sigma 0.040
+gen  125 | best   3.3200 | mean   2.8243 | diversity 0.020 | sigma 0.051
+gen  150 | best   3.3838 | mean   3.0279 | diversity 0.019 | sigma 0.044
+Stopped after 150 generations (maxGen), 9.3 s. Best score 3.3838
+=== Robot gait GA, seed 3 ===
+gen    0 | best   1.0715 | mean -89.4472 | diversity 0.283 | sigma 0.100
+gen   25 | best   2.9197 | mean   2.5215 | diversity 0.037 | sigma 0.070
+gen   50 | best   3.0516 | mean   2.7757 | diversity 0.027 | sigma 0.057
+gen   75 | best   3.0518 | mean   2.7744 | diversity 0.020 | sigma 0.049
+gen  100 | best   3.0530 | mean   2.4878 | diversity 0.019 | sigma 0.044
+gen  125 | best   3.0547 | mean   2.9252 | diversity 0.017 | sigma 0.038
+gen  150 | best   3.0657 | mean   2.9605 | diversity 0.014 | sigma 0.032
+Stopped after 150 generations (maxGen), 9.3 s. Best score 3.0657
+=== Robot gait GA, seed 4 ===
+gen    0 | best   0.1069 | mean -53.8015 | diversity 0.293 | sigma 0.100
+gen   25 | best   1.7353 | mean   1.3458 | diversity 0.042 | sigma 0.068
+gen   50 | best   1.9699 | mean   1.6847 | diversity 0.027 | sigma 0.050
+gen   75 | best   2.0695 | mean   1.6670 | diversity 0.024 | sigma 0.043
+gen  100 | best   2.0992 | mean   1.8445 | diversity 0.015 | sigma 0.034
+gen  125 | best   2.1153 | mean   1.7273 | diversity 0.015 | sigma 0.040
+gen  150 | best   2.1242 | mean   1.6432 | diversity 0.018 | sigma 0.036
+Stopped after 150 generations (maxGen), 9.7 s. Best score 2.1242
+    seed    fitness    speed_mps    maxJointVel    maxTorque    minClear    minMargin    minFeet
+    ____    _______    _________    ___________    _________    ________    _________    _______
+
+     0      3.3997      0.34082       1.5957         41.95       0.13676     0.45489        4   
+     1       3.158      0.31686       1.5996        41.999      0.088112     0.28186        4   
+     2      3.3838      0.36194       1.5981        44.285      0.075439     0.20317        4   
+     3      3.0657      0.30774       1.5985        41.937       0.13392     0.30506        4   
+     4      2.1242      0.21305       1.5991        41.977        0.1603     0.55497        5   
+
+
+ans =
+
+  5ž8 table
+
+    seed    fitness    speed_mps    maxJointVel    maxTorque    minClear    minMargin    minFeet
+    ____    _______    _________    ___________    _________    ________    _________    _______
+
+     0      3.3997      0.34082       1.5957         41.95       0.13676     0.45489        4   
+     1       3.158      0.31686       1.5996        41.999      0.088112     0.28186        4   
+     2      3.3838      0.36194       1.5981        44.285      0.075439     0.20317        4   
+     3      3.0657      0.30774       1.5985        41.937       0.13392     0.30506        4   
+     4      2.1242      0.21305       1.5991        41.977        0.1603     0.55497        5   
+

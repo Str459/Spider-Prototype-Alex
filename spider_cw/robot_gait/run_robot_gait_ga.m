@@ -3,7 +3,7 @@ function results = run_robot_gait_ga(seeds, varargin)
 %   run_robot_gait_ga            % seeds 0..4
 %   run_robot_gait_ga(0:2, 'popSize', 80, 'maxGen', 200)
 %
-%   Uses the GA engine in this folder (ga_run.m: tournament
+%   Uses the same GA engine as Part 1 (part1_ga/ga_run.m: tournament
 %   selection, two-point crossover, adaptive Gaussian mutation, elitism)
 %   on the 11 robot gait genes (robot_gait_genes.m), scored by
 %   robot_gait_fitness.m. Each seed's best gait is exported as a CANDIDATE.
@@ -25,7 +25,7 @@ if nargin < 1 || isempty(seeds)
     seeds = 0:4;
 end
 here = fileparts(mfilename('fullpath'));
-% (GA engine files are in this folder)
+addpath(fullfile(here, '..', 'part1_ga'));       % ga_run, operators, support_margin, plots
 
 g     = robot_geometry();
 genes = robot_gait_genes();

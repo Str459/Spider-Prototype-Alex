@@ -1,0 +1,99 @@
+PART 1 - CHROMOSOME ENCODING
+============================
+Files: part1_ga/gait_genes.m, part1_ga/gait_decode.m (Stage B, the gait)
+       part1_ga/run_pose_ga.m (Stage A, a single pose)
+
+1. Two stages, one GA engine
+----------------------------
+Stage A (run_pose_ga.m): the chromosome is exactly the 1x24 vector the
+provided plot_spider_pose.m accepts:
+    [L1a L1b L1c L2a ... R1a R1b R1c]   (radians, a = coxa, b = femur, c = tibia)
+The GA evolves one stable standing pose. This is the most literal reading of
+"find a valid chromosome of 24 angles" and shows the operators working on a
+problem whose answer you can judge by eye.
+
+Stage B (run_gait_ga.m): the spec asks for a full gait of about 300 such
+vectors. Here the chromosome is 27 real numbers that DESCRIBE a gait;
+gait_decode.m turns them into the 300 x 24 matrix, one spec-format pose per
+row (best_gait.csv). Both stages use the same ga_run.m.
+
+2. Why not put all 300 x 24 = 7200 angles in the chromosome?
+------------------------------------------------------------
+* The search space would be enormous and almost every random point is a
+  spider twitching, not walking. Crossover between two such chromosomes
+  mixes frames from unrelated motions.
+* Nothing would force frame 300 to join back up with frame 1, or
+  neighbouring frames to be close to each other.
+A gait is periodic and smooth, so we encode the parameters of a periodic,
+smooth motion instead. The decoder guarantees continuity and looping; the GA
+only has to discover the shape and timing.
+
+3. Why not one sine wave per joint (offset, amplitude, phase x 24 = 72 genes)?
+-----------------------------------------------------------------------------
+An earlier prototype in this project did exactly that. Every seed converged
+to standing still. The reasons were measured:
+* Standing is a strong local optimum. Scaling a working hand-made stride from
+  0 to full size, the score first DROPS (1.00 -> 0.71 -> 0.74) before rising
+  (-> 1.25 -> 1.81): small strides drag the feet along the ground before the
+  lift is big enough to clear it.
+* Timing is the needle in the haystack. With good amplitudes but random
+  phases, the median score was -6.2 and none of 2000 samples beat standing.
+  24 independent phases almost never line up into a usable stepping pattern.
+
+4. The encoding we use (27 genes)
+---------------------------------
+Genes 1-24: six per front-to-back pair of legs (front, midfront, midrear,
+rear). The left and right leg of a pair share them, mirrored:
+    coxaOffset   [-0.5, 0.5]  mean coxa angle, + = foot further forward
+    coxaSwing    [ 0.0, 0.5]  coxa amplitude (half the stride)
+    femurStance  [-1.2, 0.6]  femur angle while the foot is planted
+    femurLift    [ 0.0, 0.8]  extra femur angle at the top of a swing
+    tibiaStance  [-2.0, 0.0]  tibia angle while the foot is planted
+    tibiaLift    [-0.8, 0.8]  extra tibia angle at the top of a swing
+Genes 25-27: timing shared by every leg:
+    phaseLR      [0, 1)       delay of a right leg behind its left partner
+    phaseFB      [0, 1)       delay of each pair behind the pair in front
+    duty         [0.5, 0.9]   fraction of the cycle a foot is planted
+
+How the decoder builds a step (gait_decode.m)
+* Leg delay = (pair - 1) * phaseFB (+ phaseLR on the right). This is the
+  "metachronal wave" seen in real spiders and insects: legs step in a wave
+  running along the body, and the two sides alternate. Two numbers describe
+  the whole pattern, instead of 24 independent phases. phaseLR = 0.5 gives
+  the alternating tetrapod gait (L1 R2 L3 R4 / R1 L2 R3 L4).
+* STANCE (foot planted, fraction "duty" of the cycle): only the coxa moves,
+  sweeping the foot backwards at constant speed. A coxa turn is a rotation
+  about the vertical axis, so it cannot change the foot's height. If the
+  femur/tibia stance angles put the foot on the ground, it STAYS on the
+  ground for the whole stance. This removes the "small strides drag the
+  feet" valley that trapped the sine-wave prototype.
+* SWING (foot in the air): the coxa brings the foot forward along a smooth
+  cosine; femur and tibia add a half-sine lift that is zero at lift-off and
+  touch-down, so there is no jump in any joint angle.
+
+Evidence it works (test_part1.m, check [4]): a hand-made walk in this
+encoding scores 3.08, marching on the spot 0.28, so stride is rewarded
+straight away. The hand-made walk is only used in that test; it is never put
+into the GA population (that would make the GA pointless).
+
+5. Design choices and trade-offs
+--------------------------------
+* Real-valued genes, not binary. Joint angles are continuous. Real genes
+  avoid "Hamming cliffs" (in binary, 0111 -> 1000 is a tiny change in value
+  but needs every bit to flip) and allow blend crossover to create children
+  BETWEEN their parents.
+* Mirrored pairs halve the genes (24 instead of 48 per-leg values) and make
+  the gait symmetric by construction, so the fitness needs no symmetry term.
+  Cost: this encoding cannot learn to turn. Dropping the mirroring would
+  allow turning at the price of a harder search.
+* Circular phase genes. Phase 0.95 and 0.05 are 0.1 apart, not 0.9. Mutation
+  wraps them round (ga_mutation.m) and blend crossover moves the second
+  parent by a whole cycle when that brings it closer (ga_crossover.m).
+* Bounds come from the geometry: a coxa swing of +-0.5 rad (+-29 deg) roughly
+  matches the 30 deg spacing between neighbouring legs, and the femur/tibia
+  ranges cover every way of putting a foot on the ground at z = -0.4.
+* The genes are grouped per leg pair, so block (one/two-point) crossover
+  tends to keep one leg's settings together.
+* The encoding cannot express everything: stance-phase femur/tibia motion is
+  fixed, so feet move in arcs rather than straight lines (see the slip
+  discussion in part1_fitness.txt).

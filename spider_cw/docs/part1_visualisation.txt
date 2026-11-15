@@ -1,0 +1,71 @@
+PART 1 - VISUALISATION TOOLS
+============================
+Every run of run_gait_ga writes these to outputs/part1/<name>/. They answer
+two questions: "is the GA working?" and "is the result a sensible gait?".
+
+IS THE GA WORKING?
+------------------
+Console log (ga_run.m)
+    Every 10 generations: best and mean fitness, diversity, sigma. Shows
+    progress live while a run is going.
+
+fitness.png (plot_ga_history.m)
+    Top: best, mean and median fitness per generation.
+      - Best never falls: elitism keeps the best chromosome.
+      - Mean following best means selection is pulling the population
+        towards good solutions.
+      - Long flat stretches followed by jumps = the search was stuck and a
+        mutation or crossover found a way out.
+    Bottom: diversity (mean standard deviation of each gene / its range)
+    and the adaptive mutation step sigma.
+      - Diversity falling quickly to ~0 would mean premature convergence.
+      - Sigma shrinks while the GA keeps improving and grows after 15
+        stalled generations, to explore again. When it grows, the mean
+        fitness drops (the population spreads out) while the best stays.
+
+components.png (plot_ga_history.m)
+    Each fitness term of the best chromosome per generation. Shows the order
+    in which the GA solved the problem: typically feet onto the ground and
+    collisions removed first, then enough feet down, then stride grows.
+
+outputs/part1/experiments/ (run_experiments.m)
+    convergence.png: average best-fitness curves of each variant, one panel
+    per GA component. final_scores.png: final fitness of every single run.
+    summary.csv / runs.csv: the numbers.
+
+IS THE RESULT A SENSIBLE GAIT?
+------------------------------
+pose_snapshots.png (animate_gait.m)
+    Six 3D renderings through one cycle, using the lecturer's colours
+    (coxa black, femur blue, tibia red). Green feet are planted, open red
+    feet are swinging.
+
+gait.gif (animate_gait.m)
+    Two cycles of walking. The body is moved forward by the distance the
+    planted feet push it, and planted footprints are left on the ground as
+    grey dots. If a planted foot truly holds still, its footprints pile up
+    in one place; a smeared trail shows slip.
+
+foot_heights.png (plot_gait_analysis.m)
+    Top: height of each foot above the ground. Planted feet sit exactly on
+    0, swinging feet rise above the dotted clearance line.
+    Bottom: gait diagram, black = planted. The diagonal bands show the
+    wave of steps running down each side and the two sides alternating.
+
+joint_angles.png (plot_gait_analysis.m)
+    All 24 joint angles over the cycle. Coxa angles ramp linearly during
+    stance and return smoothly in swing; femur and tibia are flat in stance
+    and bump during swing.
+
+stability.png (plot_gait_analysis.m)
+    Stability margin over the cycle (must stay above the red line), number
+    of feet down (never below 4) and the body's forward speed.
+
+lecturer_view.png (run_gait_ga.m)
+    Frame 1 of best_gait.csv drawn by the PROVIDED plot_spider_pose.m,
+    unchanged. Shows our exported angles plug straight into the lecturer's
+    model. test_part1.m also checks our fast kinematics against the
+    provided forward_leg_kinematics2.m (max error about 1e-14).
+
+Stage A (run_pose_ga) writes fitness.png, components.png, pose.png and
+lecturer_view.png for the standing pose.

@@ -1,0 +1,71 @@
+baseline        seed 0: fitness  11.445 distance  4.21 walks  (250 gens, 13.7 s)
+baseline        seed 1: fitness  10.941 distance  3.92 walks  (250 gens, 13.4 s)
+baseline        seed 2: fitness  10.839 distance  3.97 walks  (250 gens, 14.2 s)
+baseline        seed 3: fitness  11.504 distance  4.12 walks  (250 gens, 13.8 s)
+baseline        seed 4: fitness  10.854 distance  3.94 walks  (250 gens, 14.9 s)
+roulette        seed 0: fitness   8.163 distance  3.17 walks  (250 gens, 13.6 s)
+roulette        seed 1: fitness   8.735 distance  3.32 walks  (250 gens, 13.0 s)
+roulette        seed 2: fitness   6.558 distance  2.78 walks  (250 gens, 13.1 s)
+roulette        seed 3: fitness   6.524 distance  2.58 walks  (208 gens, 11.1 s)
+roulette        seed 4: fitness   8.229 distance  3.21 walks  (250 gens, 13.0 s)
+rank            seed 0: fitness   7.534 distance  3.04 walks  (160 gens, 8.3 s)
+rank            seed 1: fitness   9.089 distance  3.47 walks  (250 gens, 12.7 s)
+rank            seed 2: fitness  10.600 distance  3.98 walks  (250 gens, 12.7 s)
+rank            seed 3: fitness   7.733 distance  3.03 walks  (190 gens, 9.7 s)
+rank            seed 4: fitness   9.171 distance  3.65 walks  (250 gens, 12.4 s)
+tournament k=5  seed 0: fitness  11.045 distance  4.01 walks  (250 gens, 12.4 s)
+tournament k=5  seed 1: fitness  11.271 distance  4.00 walks  (250 gens, 12.2 s)
+tournament k=5  seed 2: fitness  11.318 distance  4.11 walks  (250 gens, 12.1 s)
+tournament k=5  seed 3: fitness  11.500 distance  4.08 walks  (250 gens, 12.1 s)
+tournament k=5  seed 4: fitness  10.869 distance  3.97 walks  (250 gens, 12.4 s)
+uniform         seed 0: fitness  11.515 distance  4.12 walks  (250 gens, 12.4 s)
+uniform         seed 1: fitness  11.606 distance  4.16 walks  (250 gens, 12.2 s)
+uniform         seed 2: fitness  11.379 distance  4.16 walks  (250 gens, 12.2 s)
+uniform         seed 3: fitness  10.813 distance  3.92 walks  (250 gens, 12.5 s)
+uniform         seed 4: fitness  11.454 distance  4.16 walks  (250 gens, 12.4 s)
+two-point       seed 0: fitness  11.603 distance  4.27 walks  (250 gens, 12.1 s)
+two-point       seed 1: fitness  11.195 distance  4.11 walks  (250 gens, 11.8 s)
+two-point       seed 2: fitness  11.565 distance  4.28 walks  (250 gens, 12.1 s)
+two-point       seed 3: fitness  12.068 distance  4.39 walks  (250 gens, 13.6 s)
+two-point       seed 4: fitness  11.618 distance  4.24 walks  (250 gens, 13.9 s)
+no crossover    seed 0: fitness   9.331 distance  3.61 walks  (250 gens, 13.6 s)
+no crossover    seed 1: fitness   8.547 distance  3.17 walks  (250 gens, 14.1 s)
+no crossover    seed 2: fitness  10.194 distance  3.88 walks  (250 gens, 14.3 s)
+no crossover    seed 3: fitness   8.777 distance  3.30 walks  (250 gens, 13.4 s)
+no crossover    seed 4: fitness   9.851 distance  3.71 walks  (250 gens, 12.9 s)
+fixed sigma     seed 0: fitness  10.878 distance  3.94 walks  (250 gens, 13.2 s)
+fixed sigma     seed 1: fitness  10.618 distance  3.92 walks  (250 gens, 13.0 s)
+fixed sigma     seed 2: fitness  10.360 distance  3.85 walks  (250 gens, 13.2 s)
+fixed sigma     seed 3: fitness  10.490 distance  3.92 walks  (250 gens, 14.0 s)
+fixed sigma     seed 4: fitness  10.423 distance  3.88 walks  (250 gens, 13.1 s)
+no elitism      seed 0: fitness  10.712 distance  3.93 walks  (250 gens, 13.5 s)
+no elitism      seed 1: fitness  10.367 distance  3.99 walks  (250 gens, 13.5 s)
+no elitism      seed 2: fitness  10.451 distance  3.88 walks  (250 gens, 13.3 s)
+no elitism      seed 3: fitness  10.005 distance  3.80 walks  (231 gens, 12.9 s)
+no elitism      seed 4: fitness   9.252 distance  3.56 walks  (250 gens, 14.7 s)
+pop 50          seed 0: fitness   9.683 distance  3.69 walks  (250 gens, 5.9 s)
+pop 50          seed 1: fitness   9.744 distance  3.74 walks  (250 gens, 5.1 s)
+pop 50          seed 2: fitness  10.590 distance  3.95 walks  (250 gens, 4.9 s)
+pop 50          seed 3: fitness  10.830 distance  3.88 walks  (250 gens, 5.2 s)
+pop 50          seed 4: fitness   9.175 distance  3.62 walks  (250 gens, 5.7 s)
+pop 200         seed 0: fitness  10.541 distance  3.91 walks  (250 gens, 25.0 s)
+pop 200         seed 1: fitness  10.732 distance  4.11 walks  (250 gens, 27.1 s)
+pop 200         seed 2: fitness   8.092 distance  3.24 walks  (250 gens, 25.8 s)
+pop 200         seed 3: fitness  10.610 distance  3.92 walks  (250 gens, 25.8 s)
+pop 200         seed 4: fitness  10.603 distance  3.86 walks  (250 gens, 25.4 s)
+        variant         fitness_mean    fitness_std    distance_mean    distance_std    success_rate    generations_mean    seconds_mean
+    ________________    ____________    ___________    _____________    ____________    ____________    ________________    ____________
+
+    "baseline"             11.116         0.32949         4.0331           0.12513           1                 250             13.992   
+    "roulette"              7.642          1.0292         3.0099           0.31558           1               241.6             12.778   
+    "rank"                 8.8253          1.2451         3.4339           0.40825           1                 220             11.146   
+    "tournament k=5"         11.2         0.24614         4.0336          0.059533           1                 250             12.251   
+    "uniform"              11.353         0.31338          4.103           0.10474           1                 250              12.35   
+    "two-point"             11.61         0.30997         4.2574           0.10127           1                 250             12.702   
+    "no crossover"           9.34          0.6959         3.5347           0.29601           1                 250             13.664   
+    "fixed sigma"          10.554         0.20502         3.9018          0.035744           1                 250             13.329   
+    "no elitism"           10.157         0.56607         3.8335           0.16823           1               246.2              13.58   
+    "pop 50"               10.004         0.68634         3.7763           0.13639           1                 250             5.3661   
+    "pop 200"              10.115          1.1334         3.8059           0.33359           1                 250              25.81   
+
+Saved to C:\Users\stroe\OneDrive\Desktop\Spider\Spider_world_demo\spider_cw\part1_ga\..\outputs\part1\experiments
