@@ -70,6 +70,5 @@ To watch the walk, open `worlds/spider_gait.wbt` in Webots and press play.
 
 ## Open items
 
-- **`docs/part1_encoding.txt` section 3** quotes numbers from an "earlier prototype" (the 72-gene sine encoding: standing local optimum, a median of −6.2 with random phases). Those came from a teammate's handoff, not from runs on this machine. Keep them only if your group really ran that prototype; otherwise cut them.
-- **Part 1 gait quirks to mention honestly:** about 25–30% slip (arc-shaped foot paths), coxa swing stuck at its 0.5 bound, and high swing lifts.
+- **Part 1 gait quirks to mention honestly:** some slip (arc-shaped foot paths) and leg segments can cross, see section 7 of docs/part1_explanation.txt.
 - **The group contribution sheet** isn't done.
