@@ -40,7 +40,7 @@ c) Start: going from standing straight into the gait dragged all eight
 3. What changed
 ---------------
 A GA problem built for THIS robot, using the unchanged Part 1 GA engine
-(part1_ga/ga_run.m, tournament selection, two-point crossover, adaptive
+(robot_gait/ga_run.m, copied from the first Part 1 version, tournament selection, two-point crossover, adaptive
 mutation, elitism). Part 1 itself is untouched.
 
 Gait structure (robot_gait_decode.m) - the things that make it a walk:

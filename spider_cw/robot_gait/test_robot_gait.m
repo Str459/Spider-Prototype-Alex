@@ -1,7 +1,7 @@
 function test_robot_gait()
 %TEST_ROBOT_GAIT Self-checks for the Webots-robot gait model.
 here = fileparts(mfilename('fullpath'));
-addpath(fullfile(here, '..', 'part1_ga'));
+% (GA engine files are in this folder)
 g = robot_geometry();
 L = @(name) find(strcmp(g.labels, name));
 

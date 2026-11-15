@@ -1,0 +1,134 @@
+PART 1 - GENETIC ALGORITHM FOR THE SPIDER GAIT
+==============================================
+
+Code is in spider_cw/part1_ga:
+  run_ga.m           the GA itself (settings, loop, selection, crossover, mutation) and the plots
+  decode_gait.m      turns a chromosome into 300 poses (300 x 24 angles)
+  gait_fitness.m     scores a chromosome
+  foot_positions.m   forward kinematics (same maths as the lecturer's code, just faster)
+
+
+1. Chromosome encoding
+----------------------
+The task asks for a full gait, about 300 poses of 24 angles. Putting all of
+those in the chromosome (7200 genes) would be hopeless for a GA, and a random
+mix of poses would never look like walking. So the chromosome describes HOW the
+legs move, and decode_gait.m builds the 300 poses from it.
+
+The chromosome has 27 real numbers:
+  - 6 genes for each pair of legs (front, 2nd, 3rd, back): where the leg points,
+    how far it sweeps, femur and tibia angle on the ground, and how much the
+    femur and tibia bend when the foot is lifted.
+  - phaseLR and phaseFB: the timing between left/right legs and between pairs.
+  - duty: how much of the cycle each foot is on the ground.
+
+The left and right legs of a pair share genes (mirrored), so the gait is always
+symmetric and we don't need a symmetry term in the fitness.
+
+Each leg does the same step, just delayed by the timing genes. While a foot is
+on the ground only the coxa moves. The coxa turns around a vertical axis, so the
+foot slides back along the ground but keeps the same height. While the foot is in
+the air it comes forward again and the femur/tibia lift it (using sin, so the lift
+is 0 when the foot leaves and touches the ground).
+
+We used real numbers rather than binary because the genes are angles, so a small
+change in a gene is a small change in the movement, which suits Gaussian mutation.
+Every gene has a lower and upper limit (in run_ga.m) to keep the joints in a
+sensible range. Genes for the same leg pair are next to each other, so two-point
+crossover tends to pass on whole leg pairs.
+
+
+2. Fitness function
+-------------------
+There is no physics, so walking is judged from where the feet are.
+
+Reward:
+  distance walked per cycle. Feet on the ground are assumed not to slide, so
+  when they move back the body moves forward by the same amount.
+
+Penalties (only cost something when a rule is broken):
+  - planted feet not at ground height, or any foot under the ground
+  - a swinging foot lifted less than 0.15 or more than 0.5
+  - unstable frames: fewer than 4 feet down, or the body centre not inside the
+    feet. Looking from the body centre, if the planted feet leave a gap of 180
+    degrees or more the spider would tip over. We use 150 degrees to leave a margin.
+  - neighbouring feet closer than 0.6 (they would hit each other)
+  - slip: planted feet moving in different directions (they would have to slide)
+
+At first we also rewarded stability. The GA then found it was easier to stand
+still with all feet spread out than to walk, so now distance is the only thing
+rewarded and everything else is a rule. The weights are in run_ga.m. The big
+ones (unstable 50, below ground 30) are for rules that must never be broken.
+The max lift rule was added after the first runs, where the GA kicked the back
+legs up almost 2 units high because nothing stopped it.
+
+
+3. Genetic operators
+--------------------
+Selection: tournament of 3 (pick 3 at random, the best one is a parent). It only
+compares fitness values, so it works with negative fitness, and the tournament
+size controls the selection pressure. Roulette wheel is also implemented
+(fitness is shifted so all weights are positive).
+
+Crossover: two-point (swap the genes between two random cut points), rate 0.9.
+Uniform crossover (each gene swapped with 50% chance) is also implemented.
+
+Mutation: Gaussian. Each gene has a 10% chance of getting a random nudge with a
+standard deviation of 10% of that gene's range. Genes are then clipped back into
+their limits.
+
+Elitism: the best 2 are copied straight into the next generation, so the best
+gait is never lost.
+
+
+4. Algorithm and parameters
+---------------------------
+Random population of 60 inside the gene limits -> evaluate -> sort -> keep 2
+elites -> fill the rest with selection, crossover and mutation -> repeat.
+Stops after 200 generations, or after 40 generations without improvement.
+All of these are at the top of run_ga.m. Selection type, crossover type and
+the random seed can be passed in, e.g. run_ga('roulette', 'uniform', 2).
+One run takes about 15 seconds.
+
+
+5. Comparing operators
+----------------------
+Best fitness after a run, 3 seeds each:
+
+  selection    crossover   seed 1   seed 2   seed 3   mean
+  tournament   two-point    8.33     9.01     6.07    7.80
+  tournament   uniform      5.54     8.93     5.77    6.75
+  roulette     two-point    8.09     5.42     4.92    6.14
+  roulette     uniform      6.01     5.16     7.17    6.12
+
+Tournament + two-point was best on average, so it is the default. Roulette is
+weaker because once most of the population is similar the fitness values are
+close together and every chromosome gets nearly the same chance, so there is
+little pressure towards the best. Two-point beats uniform here, probably because
+it keeps the genes of a leg pair together, while uniform mixes them up.
+The results change a lot between seeds, so the GA does get stuck in different
+local optima. More seeds or a bigger population would give a fairer comparison.
+
+
+6. Visualisation (saved in outputs/part1/<settings>/)
+------------------------------------------------------
+  fitness.png    best and mean fitness per generation. The best line only goes
+                 up (elitism). The mean stays below it, which shows the
+                 population still has variety.
+  feet.png       top: height of every foot over one cycle (on the ground = 0,
+                 humps = steps). Bottom: which feet are down in each frame.
+  pose.png       frame 1 drawn with the lecturer's plot_spider_pose
+  gait.gif       the whole cycle animated with plot_spider_pose
+  best_gait.csv  the final gait, 300 x 24 angles in the spec's order
+The console also prints progress every 10 generations, and checks
+foot_positions.m against the lecturer's forward_leg_kinematics2.m (the
+difference is about 1e-15).
+
+
+7. Limitations
+--------------
+  - Feet move on arcs around the hip, not straight lines, so there is still
+    some slip.
+  - Only foot positions are checked for collisions, so leg segments can still
+    cross sometimes.
+  - Flat ground and straight walking only.

@@ -27,18 +27,12 @@ The whole `Spider_world_demo/` folder, including `AI cw/`, `spider_cw/`, `contro
 - Python 3. The Webots controller and the selection script use only the standard library.
 - For Part 2: numpy and matplotlib aren't installed on the original machine yet, and torch is only needed for the comparison.
 
-## Part 1: done (`spider_cw/part1_ga/`, MATLAB)
+## Part 1: done (`spider_cw/part1_ga/`, MATLAB, simplified to 4 files)
 
-- **Encoding:** 27 real-valued genes describe a gait. There are 6 per front-to-back leg pair, mirrored left/right (coxa offset and swing, femur and tibia stance and lift), plus 3 timing genes (`phaseLR`, `phaseFB`, `duty`). `gait_decode.m` expands them into 300×24 angles.
-  - During stance only the coxa moves. It turns about the vertical axis, so a planted foot keeps its height, which solves the "GA stands still" trap.
-  - Stage A (`run_pose_ga.m`) also evolves one standing pose directly as a 1×24 chromosome.
-- **Fitness (`gait_fitness.m`):** goal first. Distance walked per cycle is the only reward. Ground contact, ≥4 feet down, stability margin, swing clearance, foot collisions, slip and drift are requirements that only cost when broken.
-- **GA (`ga_run.m` + `ga_selection/crossover/mutation.m`):** tournament (or roulette, rank), two-point (or blend, uniform, one-point), adaptive Gaussian mutation, elitism, and stall/target stopping. Every parameter is in `ga_default_config.m`.
-- **Results**, default settings, seeds 0–4: fitness 11.2–12.1, distance 4.11–4.39 per cycle, ≥4 feet down in every frame, about 13 s per run.
-- **Operator experiments** (`run_experiments.m`, 11 variants × 5 seeds, all 55 runs walk): tournament 11.1 vs roulette 7.6 vs rank 8.8; two-point crossover 11.6 > uniform 11.35 > blend 11.1; no crossover 9.3; adaptive mutation beats fixed (11.1 vs 10.6); no elitism 10.2. The default was switched to two-point because of these results.
-- **Self-checks (`test_part1.m`):** my fast kinematics match the lecturer's `forward_leg_kinematics2.m` to 1e-14.
-- **Outputs (`spider_cw/outputs/part1/seed0..4/`):** `best_gait.csv` (300×24 radians in spec order), plots, `gait.gif`, and `lecturer_view.png` (drawn by the provided `plot_spider_pose`).
-- **Docs:** `spider_cw/docs/part1_*.txt` (encoding, fitness, operators with results, visualisation) and `spider_cw/README.md`.
+- `run_ga.m` (GA loop, tournament/roulette, two-point/uniform, Gaussian mutation, elitism, plots), `decode_gait.m` (27 genes to 300×24 angles), `gait_fitness.m`, `foot_positions.m`.
+- Run `run_ga` in `part1_ga`; results go to `outputs/part1/<selection>_<crossover>_seed<n>/`.
+- Everything is explained in `docs/part1_explanation.txt`, including the operator comparison (tournament + two-point best, mean 7.8).
+- The old, bigger version is in git history (commit 29a7542).
 
 ## Webots walking demo: done (`spider_cw/robot_gait/` + `controllers/gait_player/`)
 
@@ -53,9 +47,7 @@ The whole `Spider_world_demo/` folder, including `AI cw/`, `spider_cw/`, `contro
 
 ```
 cd spider_cw/part1_ga
-matlab -batch "test_part1"                      # self-checks, ~5 s
-matlab -batch "run_gait_ga('seed',0)"           # GA + plots + GIF, ~1-2 min
-matlab -batch "run_experiments"                 # operator comparison, ~15 min
+matlab -batch "run_ga;"                         # GA + plots + GIF, ~30 s
 
 cd ../robot_gait
 matlab -batch "test_robot_gait; run_robot_gait_ga(0:4)"   # ~2 min
@@ -66,7 +58,7 @@ To watch the walk, open `worlds/spider_gait.wbt` in Webots and press play.
 
 ## Part 2: NOT STARTED (plan)
 
-1. **Training data from Part 1.** Use `run_gait_ga('targetSpeed', s, 'name', sprintf('speed_%.1f', s))` for several speeds, e.g. 1.0–4.0, which makes `outputs/part1/speed_*/best_gait.csv` (300×24).
+1. **Training data from Part 1.** Use the `best_gait.csv` files in `outputs/part1/*/` (300×24 each, one per GA run). The old target-speed option was removed when Part 1 was simplified.
 2. **Inputs and outputs.** Input `[sin φ, cos φ, speed]`, where φ = frame/300 × 2π. Output the 24 angles, scaled to [-1, 1]. Hold out one speed to test generalisation.
 3. **Network in numpy, from scratch.** A 3→64→64→24 MLP, tanh hidden layers, linear output, MSE loss, hand-written backpropagation.
    - Prove backpropagation with a numerical gradient check.
