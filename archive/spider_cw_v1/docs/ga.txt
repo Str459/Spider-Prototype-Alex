@@ -1,0 +1,148 @@
+GENETIC ALGORITHM (part1_ga/ga.py)
+==================================
+
+Purpose
+-------
+ga.py is a generic real-valued GA. It does not import the gait or fitness code; it is given an
+evaluate_population(pop) function plus the gene bounds LOW/HIGH and a mask of circular genes.
+That keeps it testable: `python -m part1_ga.ga` checks it on 72-D test functions (shifted sphere,
+Rastrigin) with the same bounds as the gait before it is used on the spider.
+
+The loop
+--------
+Generation 0 is drawn uniformly inside the bounds (no bias towards any region). Then, each
+generation:
+  1. evaluate   - score the whole population (higher is better; negative scores are allowed)
+  2. record     - best / mean / worst score, sigma, the best chromosome and its fitness components
+  3. terminate? - stop at the generation limit, after `stall_generations` without a new best,
+                  or when `target_fitness` is reached
+  4. elitism    - copy the top `elitism` (default 2) individuals unchanged
+  5. selection  - choose parents for the remaining pop_size - elitism children
+  6. crossover  - pair parents, cross each pair with probability crossover_rate (0.9), else copy
+  7. mutation   - Gaussian noise on a few genes
+  8. repair     - clip normal genes to their bounds, wrap circular genes (phases)
+All operators are vectorised with numpy and use one np.random.default_rng(seed), so a run with
+the same seed is exactly reproducible (asserted in the self-check).
+
+Selection
+---------
+Tournament (default): each parent is the best of k random individuals (k=3). It only compares
+scores, so it is unaffected by negative values or by the scale of the fitness, and k gives direct
+control of selection pressure (k=2 gentle and diverse, k>=5 fast but risks premature convergence).
+Roulette wheel (offered for comparison): probability proportional to fitness. Because scores can
+be negative they are shifted by the population minimum, plus a small epsilon so the worst
+individual is still selectable and so equal scores do not divide by zero (then selection is
+uniform). Its weakness is scale dependence: one outlier can dominate early, and late in the run,
+when scores are close, pressure almost disappears. The test table shows this: roulette converges
+more slowly than tournament on every operator.
+
+Crossover
+---------
+BLX-alpha blend (default): each child gene is drawn uniformly from [min - a*d, max + a*d] where
+d = |parent1 - parent2| and a = 0.5. It suits real-valued genes: it creates new values between
+and slightly beyond the parents (exploration), and the interval shrinks automatically as the
+population converges (fine tuning). For circular phase genes the second parent is first moved to
+its nearest equivalent (0.1 and 6.2 rad are 0.18 rad apart, not 6.1), otherwise blending two
+nearly equal phases would produce the opposite phase.
+Two-point: swaps the segment between two random cut points. It keeps blocks of neighbouring
+genes together; in our encoding a leg's three joints (coxa, femur, tibia) are adjacent, so a
+good leg configuration survives as a unit. Less mixing than uniform.
+Uniform: each gene from either parent by coin flip. Maximum mixing and ignores gene order, but
+like two-point it can only recombine existing values; new values must come from mutation.
+
+Mutation
+--------
+Each gene mutates with probability mutation_rate (0.05, about 1-2 of the 27 gait genes per child) by
+adding Gaussian noise with std = sigma * (HIGH - LOW). Scaling by the gene's range lets one sigma
+work for genes with very different ranges (0.4 rad amplitudes, 2*pi phases). Gaussian noise gives
+mostly small tweaks with occasional larger jumps.
+Adaptive rule (adaptive_mutation=True):
+    sigma = sigma0 * (1 - 0.9 * gen / generations) * 0.5 ** (stall / stall_generations)
+floored at 5% of sigma0. Large steps early explore; later the population sits near a good gait
+and large steps mostly break it, so sigma decays linearly to 10%. If the best has not improved
+for a while we are likely on a peak needing finer moves, so sigma also halves per
+stall_generations of stalling; the stall count resets whenever the best improves.
+
+Elitism and termination
+-----------------------
+Elitism guarantees the best gait is never lost, so the recorded best score never decreases
+(asserted). Two elites out of 100 is enough for that without letting them flood the gene pool.
+The run stops at `generations` (default 300), after `stall_generations` without improvement,
+or when a `target_fitness` is reached. stall_generations defaults to 300, i.e. off: on the gait,
+walking often only emerges after 60-200 generations of slow improvement from a stable stance
+(docs/fitness.txt), and the old default of 50 ended such runs while the best was still standing.
+
+Repair of circular genes
+------------------------
+Phases (the 4 phase genes, gait.WRAP; genes 48..71 in the original 72-gene encoding) live on a circle: 0 and 2*pi are the same gait. Clipping would pile
+individuals up at the two ends and stop the GA from moving "through" 0, so these genes are wrapped
+modulo 2*pi instead (low + mod(x - low, range)). All other genes are clipped, because their bounds
+are physical joint limits. The self-check places the test optimum at phase 0.05 rad, right next
+to the wrap point, and confirms it is found.
+
+Tuning guide
+------------
+pop_size / generations : more = better search but cost scales with pop_size x generations.
+tournament_k           : raise for faster convergence, lower if the population collapses early.
+crossover_rate         : 0.7-0.95 typical; lower keeps more parents intact.
+blend_alpha            : 0 = only between parents, 0.5 = standard, higher = more exploration.
+mutation_rate / sigma  : raise if the best stalls early with low diversity (mean close to best);
+                         lower if the best is noisy and good gaits keep getting destroyed.
+stall_generations      : larger to allow escapes from plateaus, smaller to stop early.
+
+Test results (72-D, pop 100, 200 generations, seed 1; optimum = 0)
+------------------------------------------------------------------
+function   selection   crossover   gen0 best   final best
+sphere     tournament  uniform        -4.919       -0.003
+sphere     tournament  two_point      -4.919       -0.004
+sphere     tournament  blend          -4.919       -0.005
+sphere     roulette    uniform        -4.919       -0.010
+sphere     roulette    two_point      -4.919       -0.015
+sphere     roulette    blend          -4.919       -0.148
+rastrigin  tournament  uniform     -1158.335     -149.818
+rastrigin  tournament  two_point   -1158.335     -277.378
+rastrigin  tournament  blend       -1158.335     -246.774
+rastrigin  roulette    uniform     -1158.335     -234.615
+rastrigin  roulette    two_point   -1158.335     -267.217
+rastrigin  roulette    blend       -1158.335     -451.617
+Every combination improves greatly. Tournament beats roulette throughout (stronger, scale-free
+pressure). Uniform does best on these test functions because they are separable (each gene can
+be optimised independently); on the gait, genes interact within a leg, which is where two-point
+and blend are expected to help. Roulette + blend is the weakest pair: weak late pressure combined
+with blend's variance-preserving sampling keeps the population spread out.
+
+Results on the gait (python -m part1_ga.experiments: 5 seeds, 150 generations, pop 100 unless
+varied, every other setting at the GAConfig default, 27-gene encoding; plots in
+outputs/part1/experiments/)
+------------------------------------------------------------------------------------------
+experiment   variant      final best fitness (mean +- std over 5 seeds)
+selection    tournament    6.04 +- 1.57   (default)
+selection    roulette      1.46 +- 0.56
+crossover    uniform       4.54 +- 2.52
+crossover    two_point     2.38 +- 1.23
+crossover    blend         6.04 +- 1.57   (default)
+mutation     adaptive      6.04 +- 1.57   (default)
+mutation     fixed sigma   5.80 +- 3.00
+mutation     rate 0.01     2.47 +- 1.73
+mutation     rate 0.05     6.04 +- 1.57   (default)
+mutation     rate 0.2      3.84 +- 2.37
+population   50            1.19 +- 1.90
+population   100           6.04 +- 1.57   (default)
+population   200           7.12 +- 2.22
+(For scale: standing still scores 0.2, the hand-built tetrapod 3.9.)
+
+* Tournament >> roulette (6.0 vs 1.5). The fitness spans about -12..+10 with large negative
+  penalties, so roulette's shifted proportional weights give almost flat selection pressure
+  once the population is walking.
+* Blend crossover is best, and on the gait the test-function ranking changes: two-point, which
+  cuts the chromosome into blocks, is the worst here. A leg's pose, its amplitudes and the
+  shared phase genes sit in different blocks but only work together, so block swaps break
+  working combinations; blend samples between and around two good parents and keeps them
+  coherent. (With the earlier 28-gene encoding the order of uniform and two-point was reversed,
+  with both well below blend; blend's lead is the consistent result.)
+* Mutation rate 0.05 is a sweet spot: 0.01 explores too little, 0.2 disrupts good gaits. The
+  adaptive sigma has a similar mean to a fixed sigma (6.0 vs 5.8) but half the spread between
+  seeds (std 1.6 vs 3.0): decaying sigma lets every run settle instead of a lucky few.
+* Population 50 is too small to find the coordinated walk reliably. 200 scores a little higher
+  than 100 (7.1 vs 6.0, inside one std) for twice the evaluations, so 100 stays the default.
+* With 5 seeds the stds are large; differences under about one std are not conclusive.

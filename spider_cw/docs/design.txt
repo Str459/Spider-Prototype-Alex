@@ -1,0 +1,172 @@
+DESIGN OF THE SPIDER GAIT GA (version 2)
+=======================================
+
+1. What changed from version 1, and why
+---------------------------------------
+Version 1 (archive/spider_cw_v1) scored every gait on a fast, no-physics model of the lecturer's
+MATLAB spider: a foot was "on the ground" if it was the lowest, the body was carried by feet
+sweeping backwards, and stability was the body centre inside the support polygon. After a lot of
+tuning it evolved gaits that walked well in that model. Played on the Webots spider, they did not:
+    * The two bodies differ: Webots legs are 0.5/0.6/0.7 m (MATLAB 1.2/0.7/1.0), point straight
+      out sideways from a 1.3 x 0.4 m box, the hip axes are tilted 45 deg and the joint limits
+      differ. The same angles put the feet elsewhere, and 10-44% of joint targets were clamped.
+    * Re-evolving against a model of the Webots geometry still failed: with no mass, friction
+      or contact, the GA found steps that barely lifted the feet (they scraped in Webots).
+Lesson: a fitness function that does not measure the real thing gets exploited. Version 2
+therefore walks every gait in Webots physics, with self-collision on, and scores what happened.
+Even then, each loophole the physics allowed was found (sections 3 and 6).
+
+2. Encoding (part1_ga/gait.py)
+------------------------------
+Default: SHARED MOTION, 11 genes. Every leg makes the same step; only its hip direction differs.
+    s[0:4]  hip pose of L1..L4 (the fan-out: front legs forward, hind legs back)
+    s[4:6]  thigh and knee pose, shared      s[6:9]  hip, thigh, knee swing, shared
+    s[9:11] thigh and knee phase, shared
+expand_shared() turns it into the per-leg form below (26 genes); decode() accepts either.
+Why: with a swing per leg, the GA always let some legs idle while others worked. In the 4-cycle
+measurements, legs0-2 each had one pair on the floor only 6-24% of the time, while every leg
+of shared0-2 was down 51-82%. Shared motion was also better on 2 of 3 seeds (best 2.48 m vs
+1.66 m over 4 cycles) and slid less per metre forward (section 6). The idea came from watching
+the per-leg gait in Webots: "all the legs are the same, so match their movements".
+(Version 1, no-physics model: sharing the swing made every seed stand still. In physics, with
+the per-leg stepping terms, it does not.)
+
+PUSH-PULL (encoding=pushpi, 12 genes: shared motion + the hind pairs' knee phase offset, fixed at pi).
+Also the user's idea: the front legs should pull and the hind legs push. With shared motion every
+knee does the same thing at the same point of its step, but the front legs point forward and the
+hind legs backward, so drawing a foot in while it is down pulls the body forward with a front leg
+and backward with a hind leg: the two ends work against each other. Offsetting the hind pairs'
+(L3, L4, R4, R3) knee timing by pi makes them extend while the front knees draw in.
+    * As a free gene (encoding=pushpull, 6 runs) the GA did not find pi: 4 of 6 ended near 0
+      (= plain shared motion), best 1.86 m over 4 cycles. A free circular gene in a small
+      population mostly drifts back to the shared solution it starts closest to.
+    * Fixed at pi (encoding=pushpi) it gave the best near-level walk: pi0 2.05 m at ~3 deg of
+      tilt, against 1.34 m for the best shared gait under the same tilt rule (section 6).
+    The thigh timing (the foot lift) stays shared, so all legs still lift in the same rhythm.
+
+Per-leg form, 26 real genes (encoding=legs) -> 300 frames x 24 motor angles (legs L1..L4,
+R4..R1; hip, thigh, knee).
+    angle_j(t) = clip(offset_j + amp_j * sin(2 pi t / 300 + leg_phase + joint_phase_j), limits)
+    genes 0-11   base pose of the left legs; right legs mirror them (R = -L for all 3 joints)
+    genes 12-23  swing amplitudes, mirrored the same way
+    genes 24-25  thigh and knee phase relative to the leg's own hip
+    leg_phase = LR * is_right + FB * position (position L1..L4 = 0..3, R4..R1 = 3..0)
+    LR = FB = pi fixed: the alternating tetrapod of real spiders, {L1,L3,R2,R4} then {L2,L4,R1,R3}
+Why:
+    * One sine per joint: smooth and periodic, and a search space small enough to converge.
+    * Coordinated timing (version 1, MATLAB model): 72 genes with 24 free phases -> every seed
+      stood still; 2000 random phase sets with a working stride, none beat standing. Encoding
+      the timing as a wave made every chromosome coordinated.
+    * Mirror symmetry (version 1): 0/5 seeds walked without it, 5/8 with it.
+    * LR fixed (version 1): with LR as a gene the GA got stuck on left/right pairs moving
+      together ("rowing").
+    * FB fixed (version 2): with FB as a gene the first physics run chose a quarter-cycle wave
+      (fb = 0.52 pi) that looked out of sync, with the front legs pulling and the 3rd pair dragged.
+Bounds (left legs; the right side is mirrored):
+    * hip pose +-1.2 rad, hip swing <= 0.6. The hips are only 0.325 m apart and the legs point
+      straight out, so in the tetrapod neighbouring legs swing towards each other. Measured
+      (body.py): collision-free hip swing is 0.15 rad with the legs straight out, 0.35 rad when
+      fanned to +-0.6, 0.55 rad at +-1.2. With a +-0.6 limit the GA kept hip swing near 0 and
+      stepped in place (0.15-0.37 m in 4 s); with +-1.2 the best run walks 1.87 m in 4 s.
+    * thigh pose in [-1.5, 0] (legs below the body); knee pose in [-0.5, 1] so the mirrored
+      right knee stays inside the motor range [-2, 1]. Phases wrap.
+
+3. Fitness (controllers/ga_trainer, fitness())
+----------------------------------------------
+Each gait: restore the saved standing start state, 1.5 s to move into the gait's first pose,
+then 2 cycles of 2 s. Every physics step the supervisor records the body position and orientation
+and the 24 joint sensors; feet are placed with body.forward_kinematics of the MEASURED angles
+(exact for rigid links, and it sees legs blocked by self-collision).
+    score = forward - 0.5 |drift| - 0.5 |turn|
+            - 5 x (fraction of the walk with the body centre below 0.25 m) - 2 x (dip below it)
+            - 5 if it tipped past 60 degrees (evaluation stops)
+            - 3 x (fraction of frames whose commanded pose makes legs touch)
+            + 0.5 x mean foot lift (capped at 10 cm) of the legs that step
+            - 0.4 per leg that does not step (touch the floor AND lift >= 5 cm)
+            - 0.3 per metre the feet slide while on the floor
+            - 3 x mean body tilt beyond 4 deg (rad, nose up or down); trainer option pitch=0 removes it
+Each term answers a failure seen in Webots:
+    * forward is the goal; drift and turn keep it straight.
+    * Body height: with only a 2x dip penalty the first runs slid forwards on their bellies
+      (lowest body height 0.14 m; the box is 0.3 tall). With the time-below penalty all runs
+      keep the body >= 0.25 m.
+    * Per-leg terms: the next run walked 0.85 m per cycle but only the front pair pulled; the
+      3rd pair never lifted (1-2 cm) and was dragged 3.5-4 m over 4 cycles, and the feet slid
+      17 m for 3.2 m forward. Now every leg must step, lifting is rewarded up to 10 cm, and
+      sliding costs 0.3 per metre. That weight started at 0.1, where run1 still slid 11 m for
+      3.8 m forward; at 0.3 the shared-motion gaits slide about 1.9 m per metre forward instead
+      of 3. It is not higher because sine joint motion always skates somewhat, and a large
+      weight would make standing still the best option.
+    * Body tilt: shared1 walked nose-down 12 deg the whole time, which looked wrong in Webots
+      ("leans forward a tad too much"). Penalising all tilt levelled the walk to ~1 deg but
+      halved the speed (level0-2, best 1.24 m vs 2.48 m): the lean was helping it push. With
+      4 deg free (tilt0-2) the best shared gait reached 1.34 m; push-pull then recovered 2.05 m.
+* Self-collision: Webots enforces it physically (selfCollision TRUE). In addition,
+  part1_ga/body.py checks every commanded pose: leg segments as capsules of the proto's
+  thickness against the next two legs and the body box. Gaits colliding in > 20% of frames are
+  not simulated (saves time), the rest pay 3 x the colliding fraction.
+* Physics is deterministic (the self-check walks one gait 3 times: identical to 1e-6, and the
+  live run reproduced the headless run exactly), so scores are cached per chromosome.
+
+4. GA (part1_ga/ga.py) - unchanged from version 1
+--------------------------------------------------
+Tournament selection (k=3), blend crossover (BLX-0.5, circular for phases), adaptive Gaussian
+mutation (rate 0.05, sigma decays with generations and stalling), elitism 2. In version 1's
+operator experiments (5 seeds each) this was the best combination: tournament 6.0 vs roulette
+1.5; blend 6.0 vs uniform 4.5 vs two-point 2.4; adaptive sigma with half the spread of a fixed
+sigma. Population 40 here (each evaluation is a physics run); 100 generations. The shared
+encoding uses its own bounds (gait.SHARED_LOW/HIGH/WRAP) with the same operators.
+
+5. Visualisation
+----------------
+* Live: the trainer labels the Webots view with the generation, current evaluation and best
+  distance, and replays the best gait of every generation in real time.
+* measure=<run> (trainer option): walks a saved gait and prints, per leg, the real foot lift,
+  time on the floor, slide distance and whether it steps.
+* part1_ga/plots.py on a saved run: best/mean/worst fitness, each measured component of the
+  best, mutation sigma, the best pose at 4 points in the run, joint angles per leg, commanded
+  foot heights with a footfall diagram, and a GIF.
+
+6. Results (headless, pop 40, 100 generations; distances measured over 4 cycles = 8 s)
+---------------------------------------------------------------------------------------
+Two reference gaits are kept:
+    pi0      push-pull (pi), tilt rule on    2.05 m   tilt 3.4 deg   sliding 7.7 m
+    shared1  shared motion, no tilt rule     2.48 m   tilt 12 deg    sliding 4.7 m
+pi0 is the best walk with a level body; shared1 is the fastest but leans forward.
+
+Refining pi0 to slide less (trainer options start=pi0 slip=0.6|1.0, 60 generations, 3 seeds each):
+the population starts as pi0 plus small variations (3% of each gene's range) and mutates with
+sigma 0.03, so the GA searches near a gait that already works instead of from scratch.
+    run       slide weight   forward   sliding   tilt
+    pi0       0.3            2.05 m    7.7 m     3.4 deg
+    ref10_2   1.0            1.94 m    4.9 m     2.0 deg   (13 cm sideways drift over 8 s)
+    ref6_0-2  0.6            1.64-1.82 6.8-7.0   3.1-3.3
+    ref10_0-1 1.0            1.61-1.69 6.7-6.8   3.0-3.1
+ref10_2 slides 36% less for 5% less speed (2.5 m of sliding per metre forward vs 3.8); the other
+five only trimmed sliding by about 10%. All runs are kept (user's choice).
+
+All runs (seeds 0, 1, 2), forward distance over 4 cycles:
+    encoding                tilt rule    seed 0   seed 1   seed 2   mean
+    shared                  off          1.37     2.48     0.16     1.34   (shared0-2)
+    push-pull, pi forced    off          1.80     0.52     0.26     0.86   (pifree0-2)
+    push-pull, free gene    off          1.86     0.09     0.14     0.70   (ppfree0-2)
+    per-leg                 off          0.10     1.66     1.22     0.99   (legs0-2)
+    push-pull, pi forced    4 deg free   2.05     0.76     0.03     0.95   (pi0-2)
+    push-pull, free gene    4 deg free   0.71     0.00     1.39     0.70   (pp0-2)
+    shared                  4 deg free   0.65     1.34     0.07     0.69   (tilt0-2)
+    shared                  all tilt     1.24     0.85     0.05     0.71   (level0-2)
+Every run: all 8 legs step, no falls, no self-collision. Per-leg encodings left one pair barely
+touching the floor (6-24% of the time); shared and push-pull runs used every leg 50-85%.
+Older runs run0-2 (per-leg, slide weight 0.1): run1 3.79 m but 11.4 m of sliding, legs uneven.
+
+7. Limitations
+--------------
+* Results vary a lot by seed: every configuration has a seed that only steps in place
+  (0.0-0.3 m). 3 seeds per configuration is a small sample; the means above are rough.
+* pi0 slides a lot (7.7 m for 2.05 m forward; refined ref10_2: 4.9 m for 1.94 m); shared1
+  leans forward 12 deg.
+* Feet slide in every gait: one sine per joint cannot draw a flat stance stroke.
+* Each gait is scored over 2 cycles from a standing start; some looked fine over 2 cycles and
+  sank or slowed over 4 (shared2). Longer evaluations would catch that, at extra cost.
+* The footfall diagram in plots.py uses commanded angles in the body frame; measure= gives
+  the real contacts.

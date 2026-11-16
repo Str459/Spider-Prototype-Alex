@@ -1,0 +1,181 @@
+PART 2 - NEURAL NETWORK, OPTION A: SPEED-CONDITIONED GAIT GENERATOR
+=================================================================
+Code: part2_nn/ (nn.py core, speed_data.py, train_speed.py, predict.py, nn_plots.py,
+compare_pytorch.py). Saved model: part2_nn/models/speed_model.npz. Figures and numbers:
+outputs/nn_speed/. The first version (5 training speeds) is kept for comparison:
+part2_nn/models/speed_model_5speeds.npz, outputs/nn_speed_5speeds/, outputs/nn5_speed_*.
+Option E (inverse kinematics) is a teammate's part: docs/nn_teammate_prompt.md.
+
+1. The task, and input/output format
+------------------------------------
+Given where the spider is in its step cycle and how fast it should walk, output the 24 joint angles.
+    input  (3)  [sin(phase), cos(phase), speed]   phase = 2 pi k / 300 for frame k of a cycle
+    output (24) the Webots motor angles, legs L1..L4, R4..R1, each (hip, thigh, knee)
+Feeding phase 0..2pi gives a whole 300-frame gait, written as best_gait.csv so the Part 1 Webots
+player and measure= tool walk it unchanged (part2_nn/predict.py).
+* sin/cos instead of the frame number: the gait is a loop, and as (sin, cos) the last frame sits
+  next to the first; a single number would put them 299 units apart.
+* speed is a goal input (the spec suggests "a goal position, time step ..."): the point is a
+  network that can produce gaits for speeds it was never shown, not one that memorises a gait.
+
+2. Training data (part2_nn/speed_data.py)
+-----------------------------------------
+Generated with the Part 1 GA. The trainer got a target-speed mode (target=<metres>): the forward
+reward becomes -2 |distance - target| while every other term (all 8 legs stepping, body height,
+tilt, sliding, self-collision) stays. Starting from the ref10_2 gait (start=ref10_2, small
+mutations), it evolved one gait per target. Because all are refined from the same gait they form a
+smooth family: neighbouring speeds differ by only 0.7-2 deg per joint on average, which is what
+makes interpolating between them meaningful.
+    gait       GA target (m per 2-cycle test)   measured speed (m per cycle, Webots, 4 cycles)
+    speed015   0.15                             0.117
+    speed030   0.30                             0.163
+    speed045   0.45                             0.240
+    speed055   0.55                             0.314   (added in round 2)
+    speed060   0.60                             0.357   <- test speed, never used in training
+    speed065   0.65                             0.381   (added in round 2)
+    speed070   0.70                             0.399   (added in round 2)
+    speed075   0.75                             0.451
+    speed090   0.90                             0.485   (target out of reach)
+  speed050 (target 0.50) is not used: the GA could not slow it down from ref10_2 and it measured
+  0.449 m/cycle - a second, different gait at speed075's speed would give conflicting targets.
+* The speed input is the MEASURED speed, not the target: the network should learn what each gait
+  actually does in physics.
+* Normalisation: speed -> (speed - mean) / std of the non-test speeds; sin/cos are already in
+  [-1, 1]. Outputs: each angle scaled with its motor limits, y = (angle - mid) / (1.1 * half),
+  so a tanh output layer can only produce angles inside the limits (clipped exactly in
+  unscale()): valid joint angles by construction. The 10% margin stops targets that sit exactly
+  on a limit from needing tanh = +-1.
+* Dataset: 8 training gaits x 300 frames = 2400 samples; the test gait is 300 more.
+* Splits: the test set is a whole gait (speed060). A random split of frames would leak: frames of
+  one gait are near-copies, so it would only show the network can repeat what it saw.
+Round 1 used only the first 5 training speeds. The test speed then sat in the widest gap
+(0.24 to 0.45), and the network's error there was largest (section 7), so round 2 evolved three
+more gaits inside that gap.
+
+3. Architecture
+---------------
+Final: 3 -> 64 -> 64 -> 24, tanh hidden layers, tanh output (the 24 scaled angles).
+* Two hidden layers of 64: the mapping is smooth but each of the 24 outputs is a different
+  periodic curve with flat sections where a joint sits at its limit. Smaller (16x16, 32x32, one
+  layer of 64) and larger (128x128, three layers) networks all scored within 1.31-1.53 deg in
+  leave-one-speed-out validation; size matters much less than the learning rate (section 5).
+  With 2400 near-duplicate samples a much bigger network mostly memorises.
+* Weights: Xavier initialisation (He for ReLU) so activations neither vanish nor saturate at the
+  start; biases zero.
+
+4. Activation and loss functions
+--------------------------------
+* Hidden: tanh and sigmoid are smooth, so the network interpolates smoothly between the training
+  speeds; ReLU is piecewise linear and was worst in both rounds (round 2 leave-one-speed-out
+  1.97 deg vs 1.53 tanh and 1.18 sigmoid at the base settings). tanh with learning rate 0.003
+  had the lowest score of all configurations (1.12) and is the final choice; sigmoid is close.
+* Output: tanh, scaled to the motor limits (section 2): bounded outputs = valid angles.
+* Loss: mean squared error over all 24 scaled angles. Angles are continuous targets, and MSE
+  punishes large joint errors most, which matter most for where the feet land. Scaling every
+  joint by its own range stops the knee (3 rad range) outweighing the hip.
+
+5. Training method and learning rate (part2_nn/nn.py, train_speed.py)
+--------------------------------------------------------------------
+Final: Adam, learning rate 0.003, mini-batches of 64, shuffled every epoch, 310 epochs.
+* Hyperparameters were chosen by LEAVE-ONE-SPEED-OUT validation: each configuration was trained
+  3 times, each time hiding one inner training speed (speed030, speed055, speed070), used both for
+  early stopping and as the score. The test speed was never used for any choice.
+  Why: validating on a random 15% of the training frames was tried first. The configurations
+  that fitted those frames best were the WORST on a new speed (they memorised the training
+  speeds), so that validation picked the wrong models.
+* The final model trains on all 8 non-test speeds for the mean early-stopping epoch of its folds.
+* Combining each experiment's best setting was also tried (round 1): 128x128 + lr 0.03 + batch 16
+  together diverged, although each helped alone; the final model is the single best configuration.
+Round 2 experiments (each changes one setting of 64x64 tanh, Adam 0.001, batch 64; RMSE in
+degrees; "LOSO" = leave-one-speed-out, used to choose; "test" = held-out speed, reported only):
+    Adam lr        0.0003  0.001  0.003  0.01   0.03
+      LOSO         1.56    1.53   1.12   1.21   1.38
+      test         1.46    1.45   1.39   1.63   1.26
+      epochs       159     201    310    240    107
+    SGD+mom. lr    0.003   0.01   0.03   0.1    0.3
+      LOSO         1.76    1.62   1.58   1.52   1.46
+      epochs       2257    1591   1008   346    82
+    activation     tanh 1.53 | relu 1.97 | sigmoid 1.18                  (LOSO)
+    architecture   16x16 1.44 | 32x32 1.46 | 64x64 1.53 | 128x128 1.42 | 64 1.53 | 64x64x64 1.31
+    batch size     16 1.20 | 64 1.53 | 256 1.60
+    weight decay   0 1.53 | 1e-4 1.30 | 1e-3 2.28 | 1e-2 8.83
+* Adam converges in a few hundred epochs; SGD + momentum needed up to ~2300 and ended worse,
+  because the 24 outputs have very different gradient scales and Adam adapts a step size per weight.
+* The learning rate matters most: 0.003 is best for Adam; 0.0003-0.001 are slower and stop at a
+  worse point, 0.03 is close to unstable (with batch 16 and 128x128 it diverged in round 1).
+* With 8 speeds the leave-one-speed-out scores (1.1-1.6) agree with the test errors (1.2-1.7);
+  with 5 speeds they did not (LOSO ~1.8-2.0 vs test 2.3-3.7), because the folds hid smaller gaps
+  than the one around the test speed.
+
+6. Backpropagation and convergence
+----------------------------------
+* nn.py implements forward and backward passes by hand: for each layer from the output,
+  delta = (dL/doutput) * f'(output); dL/dW = input^T delta; dL/db = sum(delta);
+  the delta passed down is delta W^T.
+* Gradient check (python -m part2_nn.nn): backprop vs central finite differences for every weight,
+  tanh/relu/sigmoid hidden x tanh/linear output: largest relative difference < 1e-5. Also: SGD
+  and Adam fit a test curve (validation loss 0.42 -> 0.0003 / 0.32 -> 0.00003), weight decay
+  shrinks the weights, save/load round-trips exactly.
+* PyTorch autograd on the same batch: max gradient difference 4e-17 (section 8).
+* Convergence: outputs/nn_speed/loss_curves.png (training loss, and validation loss on each
+  hidden speed with its early-stopping epoch).
+
+7. Results
+----------
+Joint angles on the held-out speed 0.357 m/cycle (outputs/nn_speed/predicted_vs_target.png, poses.png):
+                                   5 training speeds   8 training speeds
+    network RMSE                   3.48 deg            1.14 deg (mean abs 0.90)
+    baseline: blend of the two     1.72 deg            1.04 deg
+    nearest gaits by speed         (0.24 & 0.45)       (0.314 & 0.381)
+  Filling the gap cut the network's error by two thirds; it is now close to the blend baseline.
+  The blend is a strong baseline because the training gaits are a near-linear family; the
+  network's advantage is that it is one smooth model for every speed, and gives the joint
+  angles for any phase and speed directly.
+What matters is the walk. Network gaits walked in Webots (self-collision on, 4 cycles):
+    requested (m/cycle)       0.117   0.240   0.300*  0.357**  0.400*  0.451
+    5-speed network           0.130   0.243   0.293   0.368    0.431   0.455
+    8-speed network           0.126   0.241   0.298   0.369    0.394   0.456
+    (* no gait at this speed existed; ** held-out test speed, the GA's own gait measured 0.357)
+  The 8-speed network walks within 0.4-3% of the requested speed (7.5% at the slowest), against
+  2-11% before; its body stays above the 0.25 m height rule except 1% of the time at 0.30
+  (before ~5% at 0.24 and 0.30); tilt is at most ~2 deg (before up to 4.4). All 8 legs step,
+  nothing falls or self-collides. One regression: at 0.357 and 0.451 it veers a little more
+  sideways (10-16 cm over 8 s).
+
+8. Comparison with PyTorch (part2_nn/compare_pytorch.py)
+-------------------------------------------------------
+Same network in torch: same layers and activations, the SAME initial weights, float64, Adam with
+the same settings, the same mini-batches in the same order, 310 epochs.
+    gradient agreement on one batch     max |numpy - autograd| = 4.2e-17
+    final training loss                 numpy 5.560229e-05   torch 5.560229e-05
+    largest weight difference at end    0.105 (rounding differences accumulated over ~10k steps)
+    held-out test RMSE                  numpy 1.145 deg      torch 1.061 deg
+    training time (1 thread)            numpy 7.1 s          torch 14.2 s
+(Round 1, 5 speeds, sigmoid: same gradient agreement and identical final loss; test 3.48 vs 3.52.)
+The from-scratch network computes the same gradients and learns the same function; the small
+test differences come from rounding that accumulates over thousands of updates. For a network
+this small, torch's per-call overhead makes it slower; its advantages (GPUs, automatic gradients
+for any architecture, many layers and optimisers) only pay off on larger problems.
+
+9. Saved model and how to run
+-----------------------------
+    python -m part2_nn.speed_data       # dataset self-check
+    python -m part2_nn.nn               # network self-check incl. gradient check
+    python -m part2_nn.train_speed      # experiments + final model (~40 min on 16 cores)
+    python -m part2_nn.predict 0.30     # gait for 0.30 m/cycle -> outputs/nn_speed_0.300/
+    python -m part2_nn.nn_plots         # figures
+    python -m part2_nn.compare_pytorch  # needs torch
+part2_nn/models/speed_model.npz holds the weights, the architecture and the speed normalisation;
+nn.load() rebuilds the network. In Webots: controllerArgs ["measure=nn_speed_0.300" "cycles=4"]
+on ga_trainer, or ["nn_speed_0.300"] on gait_player.
+
+10. Limitations and improvements
+--------------------------------
+* The network is only as good as the GA gaits it learns from (they still slide on the floor);
+  it learns gaits, not physics.
+* It only covers 0.12-0.49 m/cycle; outside the training speeds it would extrapolate.
+* A simple blend of the nearest gaits is about as accurate in joint angles; more speeds, or a
+  per-leg-shared network (all legs make the same step), could pull the network ahead.
+* One seed per configuration; repeated seeds would show how much of each difference is luck.
+* A network outputting the GA's 12 push-pull genes (then gait.decode) would be smaller and
+  guaranteed periodic, but the spec asks for the 24 joint angles, which this network outputs.

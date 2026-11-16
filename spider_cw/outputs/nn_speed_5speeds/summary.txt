@@ -1,0 +1,43 @@
+baseline (blend of the neighbouring gaits): test RMSE 1.72 deg, mean abs 1.39 deg
+per configuration: leave-one-speed-out RMSE (used to choose) | test-speed RMSE (reported only)
+
+learning rate (Adam)
+  lr 0.0003  LOSO  1.98 deg | test  3.19 deg  best epoch ~ 1134   377.7 s
+  lr 0.001   LOSO  1.92 deg | test  3.16 deg  best epoch ~  645   256.2 s
+  lr 0.003   LOSO  1.83 deg | test  3.22 deg  best epoch ~  476   207.8 s
+  lr 0.01    LOSO  1.76 deg | test  3.67 deg  best epoch ~  420   190.6 s
+  lr 0.03    LOSO  1.78 deg | test  2.61 deg  best epoch ~  264   154.2 s
+
+learning rate (SGD + momentum 0.9)
+  lr 0.003   LOSO  2.67 deg | test  2.35 deg  best epoch ~ 2993   510.9 s
+  lr 0.01    LOSO  2.37 deg | test  2.67 deg  best epoch ~ 2998   514.4 s
+  lr 0.03    LOSO  2.20 deg | test  2.81 deg  best epoch ~ 2015   463.2 s
+  lr 0.1     LOSO  2.12 deg | test  3.00 deg  best epoch ~ 1334   351.9 s
+  lr 0.3     LOSO  2.10 deg | test  2.98 deg  best epoch ~  373   156.0 s
+
+hidden activation
+  tanh       LOSO  1.92 deg | test  3.16 deg  best epoch ~  645   270.8 s
+  relu       LOSO  2.72 deg | test  4.80 deg  best epoch ~ 2248   490.9 s
+  sigmoid    LOSO  1.74 deg | test  3.55 deg  best epoch ~  852   347.3 s
+
+architecture
+  16x16      LOSO  1.85 deg | test  2.87 deg  best epoch ~  687    95.6 s
+  32x32      LOSO  1.95 deg | test  3.14 deg  best epoch ~  722   175.1 s
+  64x64      LOSO  1.92 deg | test  3.16 deg  best epoch ~  645   268.7 s
+  128x128    LOSO  1.89 deg | test  3.10 deg  best epoch ~  439   427.6 s
+  64         LOSO  1.89 deg | test  2.94 deg  best epoch ~  939   194.6 s
+  64x64x64   LOSO  1.91 deg | test  3.14 deg  best epoch ~  463   280.2 s
+
+batch size
+  batch 16   LOSO  1.79 deg | test  3.26 deg  best epoch ~  334   287.9 s
+  batch 64   LOSO  1.92 deg | test  3.16 deg  best epoch ~  645   236.5 s
+  batch 256  LOSO  1.98 deg | test  3.16 deg  best epoch ~ 1447   305.0 s
+
+weight decay (L2)
+  l2 0       LOSO  1.92 deg | test  3.16 deg  best epoch ~  645   207.2 s
+  l2 0.0001  LOSO  2.21 deg | test  2.29 deg  best epoch ~  372   169.3 s
+  l2 0.001   LOSO  3.25 deg | test  2.44 deg  best epoch ~  475   183.4 s
+  l2 0.01    LOSO  9.36 deg | test  8.64 deg  best epoch ~   10    76.3 s
+
+final {'sizes': [64, 64], 'hidden': 'sigmoid', 'opt': 'adam', 'lr': 0.001, 'batch': 64, 'l2': 0.0, 'epochs': 3000, 'patience': 300, 'seed': 0}
+  LOSO 1.74 deg; trained 852 epochs on all 5 speeds; test-speed RMSE 3.48 deg, mean abs 2.49 deg (10.9 s)

@@ -1,0 +1,15 @@
+# Course materials from the module page (not ours to publish) and a teammate's separate repository
+Info/
+Spider-Prototype-Alex/
+
+# Python
+__pycache__/
+*.pyc
+
+# Webots per-world view state and previews (regenerated when a world is opened)
+*.wbproj
+Spider_world_demo/worlds/.*.jpg
+
+# Self-test output
+spider_cw/outputs/_plots_selftest/
+archive/spider_cw_v1/outputs/_plots_selftest/

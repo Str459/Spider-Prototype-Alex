@@ -1,0 +1,43 @@
+VISUALISATION TOOLS (part1_ga/plots.py)
+=======================================
+All figures are produced by part1_ga/plots.py (self-test: `python -m part1_ga.plots` from spider_cw/).
+
+fitness.png  - plot_fitness
+  Best, mean and worst fitness per generation. A working GA shows the best curve rising quickly
+  and then levelling off (convergence). The mean following the best upwards shows selection is
+  pushing the whole population; a gap that never closes means diversity is being kept, a gap
+  that collapses to zero early warns of premature convergence.
+
+components.png  - plot_components
+  Each term of the fitness function for the best individual, one panel per term. Shows which
+  part of the objective is being improved (e.g. distance travelled rising, foot slip falling)
+  and exposes trade-offs, or a single term dominating the score.
+
+sigma.png  - plot_mutation_sigma
+  Mutation step size per generation. Evidence that the adaptive mutation is doing something:
+  sigma should shrink as the search fine-tunes, and rise again if progress stalls.
+
+snapshots.png  - plot_pose_snapshots
+  3D frame-0 pose of the best individual at generation 0, ~1/3, ~2/3 and the end, drawn with the
+  lecturer's MATLAB colour scheme (coxa black, femur blue, tibia red, head = red triangle).
+  The pose should go from a random tangle to a symmetric, plausible standing posture.
+
+joints.png  - plot_joint_angles
+  The 3 joint angles of each leg over the 300 frames. Confirms the gait is smooth and loops
+  (frame 300 meets frame 0) and lets you compare timing (phase) between legs.
+
+feet.png  - plot_foot_heights
+  Top: height of each foot over time. Bottom: footfall (gait) diagram - a black bar while a
+  foot is in stance (within 0.1 of the lowest foot that frame). A good walking gait has legs
+  lifting and landing in alternating groups, with several feet down at every instant for
+  support; a leg that never touches down or a gap with almost no feet down is a bad sign.
+
+gait.gif  - animate_gait
+  Animation of the evolved gait in 3D (every few frames), the most direct check that the
+  spider actually walks rather than just scoring well on paper.
+
+compare.png  - compare_runs
+  For the operator experiments: mean best-fitness curve over several seeds per configuration,
+  with a shaded band of +/- 1 standard deviation. Runs that stopped early keep their final
+  value. A configuration is better if its curve is higher; a narrow band means it is reliably
+  better, while overlapping bands mean the difference may be down to random seed.

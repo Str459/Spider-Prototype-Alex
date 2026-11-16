@@ -1,0 +1,126 @@
+FITNESS FUNCTION (part1_ga/fitness.py)
+======================================
+
+Purpose. The GA needs one number saying how good a 300-frame gait is. The brief asks for poses
+that are plausible, stable and goal-directed, but not for full physics, so the score is computed
+from the kinematics only: decode the genes into 300 poses (see docs/encoding.txt), compute every
+joint position, and judge the foot trajectories against a simple ground/stance model.
+Score = sum of weighted terms, higher is better. Each term is a separate function so its effect
+can be plotted and argued for.
+
+Ground and stance model
+-----------------------
+The body is fixed at the origin (z = 0) in its own frame. In every frame the ground is the plane
+through the lowest foot, so body height = -(lowest foot z). A foot within STANCE_TOL = 0.05 of
+that plane is in STANCE, otherwise it is SWINGING. A frame is STATICALLY STABLE when >= 4 feet
+are down and the body centre lies inside their convex support polygon (signed margin > 0; the
+margin is computed with the support function min_u max_i u.foot_i over 32 directions u, which
+gives the distance to the nearest edge when inside and minus the distance when outside, without
+building hulls, so it vectorises). Stance feet are assumed not to slip, so when they move
+backwards relative to the body, the body moves forwards by the same amount:
+body velocity = -(mean displacement of feet that stay grounded over the step). A step only
+counts if >= 4 feet stay down through it AND the body is statically stable at both ends of it -
+an unstable body would tip over, not be carried forwards. The cycle is periodic (frame 300 ->
+frame 0) so the step from the last frame back to the first is included.
+
+Terms (components dict = unweighted values)
+-------------------------------------------
+progress      Forward (+X) distance per cycle. This is the goal. With target_speed (distance per
+              cycle, for Part 2's multi-speed training data) it becomes -|distance - target|, so
+              the GA hits a chosen speed instead of maximising. distance(pop) returns the raw value.
+stability     A constraint, not a prize. Reward: average of mean and worst-frame margin (a gait
+              is only as safe as its worst moment), capped at MARGIN_CAP = 0.2. Penalty:
+              UNSTABLE_PENALTY (5) x fraction of frames that are not statically stable.
+clearance     The body must ride at least 0.5 above the ground (no belly dragging) at a steady
+              height (std of height penalised: no bobbing), no knee may go below the ground plane,
+              and neighbouring feet must stay 0.3 apart (leg collision).
+slip          Grounded feet on a rigid body all move with the same velocity; if they do not, they
+              are skating. Penalises the RMS spread of stance-foot steps summed over the cycle,
+              plus sideways (Y) distance travelled. Both are distances, comparable to progress.
+coordination  Legs L1..L4,R4..R1 form a ring, so legs i and i+1 (mod 8) are exactly the neighbour
+              pairs (front/back on each side, plus L1-R1 and L4-R4). Penalises the fraction of
+              frames where two neighbours are in the air together. Standing still scores 0 (best)
+              on purpose: rewarding motion is progress's job, so this cannot be farmed by wiggling.
+smoothness    Mean joint acceleration (scaled so a sine of amplitude A scores ~A) plus time spent
+              within 0.1 rad of the joint limits. The sine encoding is already smooth, so this
+              mainly discourages needlessly large swings and joints jammed against their stops.
+lift          Every leg must step: each foot's peak height above the ground over the cycle,
+              capped at LIFT_CAP = 0.15, averaged over the 8 legs, counted only for feet that
+              also touch down. Max contribution 2 x 0.15 = 0.3. A leg that never touches down
+              costs IDLE_PENALTY = 4 x its share of the 8 legs (x weight 2 = -1 per idle leg).
+
+Weights and tuning
+------------------
+WEIGHTS = progress 3, stability 1, clearance 2, slip 1, coordination 1, smoothness 0.2, lift 2.
+Reference gaits (python -m part1_ga.fitness):
+  2000 random chromosomes   median about -11 (stability about -7.6: random poses are never stable)
+  hand-built tetrapod       3.94 (progress 1.75, slip -1.73, stability 0.2, lift 0.15)
+  zero-amplitude standing   0.20 (stability 0.2, every other term 0)
+
+How the weights got here (each change answers a measured failure)
+  * progress 1.0 -> 1.5 (first version): with equal weights the hand tetrapod scored below
+    standing, because a coxa sweep moves each foot on an arc, so stance feet always skate.
+  * The GA still stood still on every seed. Scaling the hand tetrapod's amplitudes by k showed
+    a dip: score 1.00 at k=0, 0.71 at 0.1, 0.74 at 0.25, 1.25 at 0.5, 1.81 at 1. Small strides
+    drag feet before they lift clear, so standing is a real local optimum. Dragging IS worse than
+    standing, so the dip was kept; the encoding was changed instead (docs/encoding.txt) and:
+  * MARGIN_CAP 1.0 -> 0.2 and progress 1.5 -> 3: standing with 8 feet spread earned a full
+    stability point, as much as a good walk. Stability is now a requirement, progress the goal.
+    The k-scan with these weights is monotone (0.20, 0.28 at k=0.25, 1.67 at 0.5, 3.64 at 1).
+  * The GA then found fast walkers that leaned on 3 feet for part of the cycle (8 seeds:
+    progress 1.4-2.0 but stability -0.3..-0.6). Fix: progress only on statically stable steps
+    and a 5x penalty per unstable fraction of the cycle. Afterwards every evolved walker keeps
+    >= 4 feet down with the body inside the support polygon at every frame.
+  * About a third of runs still ended standing still. No random chromosome is statically
+    stable (0 of 5000), so the GA first reaches stability by shrinking every amplitude
+    (mean 0.22 -> 0.05 rad within 40 generations); amplitude 0 is a bound, i.e. sticky, and
+    walking from there needs several genes to change together. Fix: the lift term, so stepping
+    while stable beats standing. Its first version paid feet held permanently in the air (one
+    run stood on 6 feet with 2 raised); lift now only counts feet that also touch down.
+    With that fitness 4/5 seeds walked 1.39-2.83 per cycle, but seed 2 walked on 6 legs with
+    both hind legs held 1.77 above the ground all cycle, and seed 0 stood on 6 with L2/R2 raised:
+    an idle leg only cost ~0.25 through coordination. Fix: IDLE_PENALTY (-1 per idle leg).
+    Result with the final fitness (default GAConfig, seeds 0-4): 5/5 seeds walk 1.91-3.67 per
+    cycle on all 8 legs (each leg in stance 50-59% of the cycle), >= 4 feet down at every frame.
+  * smoothness 0.2 (chosen, not tuned): roughly proportional to swing amplitude, which a walk
+    needs, so it is a tie-breaker rather than a competitor to progress.
+Alternatives tried and rejected (pop 100, 300 generations, 5 seeds unless stated):
+  softer stability penalty 1 (instead of 5): 3/5 walk but one walker leans on 2 feet; 2: 1/5.
+  minimum amplitudes (coxa 0.1, femur 0.05 rad) instead of lift: 4/6, but the rest settle on
+  "shuffles" with the femur phase at 0 or pi (feet lift at both stroke ends, net progress 0).
+  penalising the 4th-lowest foot's height (a continuous stability gradient): 1/6.
+  population 300: 0/5 reach 1.0 per cycle in 300 generations (slower per generation).
+  mutation rate 0.15: 3/5; tournament size 2: 1/5.
+Exploits found with a 15 s random-mutation hill climber used as an adversary (in the self-check):
+  1. From random starts it "walked" 4.5 per cycle by paddling one or two feet with the others in
+     the air. Fix: steps need >= 3 (now 4, stable) grounded feet.
+  2. Refining the hand gait, it swung neighbouring legs to within 0.04 of each other (legs
+     colliding). Fix: the neighbouring-feet gap penalty in clearance (worst frame counts).
+The self-check asserts that the climbed gaits keep >= 3 feet down and feet > 0.1 apart.
+
+Trade-offs and limitations
+--------------------------
+* Kinematic only: no masses, torques, friction or momentum. "Stable" means statically stable
+  (centre of mass over the support polygon), which is conservative for a slow walker.
+* The ground is defined by the lowest foot each frame, so the body is implicitly allowed to rise
+  and fall; clearance penalises that variation rather than simulating it. Body pitch/roll is
+  ignored (feet are judged in the body frame).
+* Stance is a hard threshold (0.05), so scores change in small steps when a foot crosses it.
+* Collision checking is between neighbouring feet only, not whole leg segments.
+* One sine per joint cannot give a perfectly flat, straight stance stroke, so some slip is
+  unavoidable; the weights accept a little skating in exchange for walking at all.
+* lift is a shaping term (it rewards a means, stepping, not the goal). It is capped and small
+  (0.3 max vs 3 per unit of progress), so it cannot outweigh walking.
+* Reliability: seeds 0-4 all walk with the final fitness, but before the idle-leg penalty about
+  1 run in 5 settled on standing still, so a failed run is still possible on other seeds. That
+  would be a search failure, not a fitness exploit (walkers score 5-10, standing 0.2). Running
+  several seeds and keeping the best is the practical remedy.
+* Static stability is kept but only just: every evolved gait's minimum margin is 0.00-0.02.
+  MARGIN_CAP makes extra margin worthless beyond 0.2 and progress pays, so the GA walks on the
+  edge. A real robot would want a minimum margin constraint (e.g. 0.1).
+* With progress weighted 3, the collision penalty (2 x overlap) is cheap relative to speed: the
+  hill climber refining the hand gait trades feet 0.20 apart for 4.1 per cycle. The evolved
+  gaits keep feet >= 0.30 apart, but a stronger collision weight may be needed if that changes.
+* Speed: the model's general Rodrigues kinematics takes ~0.4 s per 100 gaits, so fitness.py uses
+  an exact closed form (each leg lies in a vertical plane; asserted equal to spider_model).
+  A population of 100 evaluates in ~0.2-0.3 s.

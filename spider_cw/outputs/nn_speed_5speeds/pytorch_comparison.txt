@@ -1,0 +1,6 @@
+config {'sizes': [64, 64], 'hidden': 'sigmoid', 'opt': 'adam', 'lr': 0.001, 'batch': 64, 'l2': 0.0, 'epochs': 3000, 'patience': 300, 'seed': 0}, 852 epochs, float64, same initial weights and batches
+gradient agreement on one batch: max |numpy - torch autograd| = 4.16e-17
+final training loss: numpy 1.390321e-05  torch 1.390321e-05
+largest weight difference after training: 2.45e-02
+held-out test speed RMSE: numpy 3.484 deg  torch 3.517 deg
+training time: numpy 8.9 s  torch 21.4 s (1 thread)
