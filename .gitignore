@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+*.wbproj
+webots/worlds/.*.jpg

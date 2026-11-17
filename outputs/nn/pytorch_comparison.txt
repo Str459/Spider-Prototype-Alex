@@ -1,0 +1,5 @@
+network {'sizes': [64, 64], 'hidden': 'tanh', 'opt': 'adam', 'lr': 0.001, 'batch': 16}, 1386 epochs, same start weights and batches
+largest gradient difference on one batch: 2.8e-17
+final validation loss: ours 5.008499e-06, PyTorch 5.005225e-06
+test speed RMSE: ours 0.119 deg, PyTorch 0.119 deg
+training time (forward + backward + update only): ours 31.1 s, PyTorch 101.6 s

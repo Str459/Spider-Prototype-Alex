@@ -1,0 +1,3 @@
+numpy
+matplotlib
+torch   # only for part2_nn_python/compare_pytorch.py
