@@ -1,0 +1,46 @@
+IK network results (QUICK RUN)
+
+gradient check (backprop vs finite differences, 24-6-5-24 net): max relative error 4.8e-07
+ambiguity check: 504 pairs of feet < 2 cm apart, largest angle gap 100 deg (all near the hip axis)
+
+experiments (validation set, mean / 95th percentile foot error):
+  learning rate (Adam)
+    64x64 tanh adam lr 0.0001 batch 64          22.53 /  50.37 cm   best epoch   19 of   20      15 s
+    64x64 tanh adam lr 0.0003 batch 64          12.04 /  26.90 cm   best epoch   19 of   20      14 s
+    64x64 tanh adam lr 0.001 batch 64            9.21 /  20.14 cm   best epoch   19 of   20      15 s
+    64x64 tanh adam lr 0.003 batch 64            8.76 /  18.84 cm   best epoch   19 of   20      14 s
+    64x64 tanh adam lr 0.01 batch 64            10.80 /  23.33 cm   best epoch   19 of   20      15 s
+    64x64 tanh adam lr 0.03 batch 64            20.22 /  44.66 cm   best epoch   12 of   20      14 s
+    64x64 tanh adam lr 0.1 batch 64             69.76 / 140.42 cm   best epoch    0 of   20      15 s
+  learning rate (SGD + momentum 0.9)
+    64x64 tanh sgd lr 0.001 batch 64            28.08 /  62.41 cm   best epoch   19 of   20      14 s
+    64x64 tanh sgd lr 0.003 batch 64            26.60 /  60.40 cm   best epoch   19 of   20      13 s
+    64x64 tanh sgd lr 0.01 batch 64             24.30 /  54.36 cm   best epoch   19 of   20      13 s
+    64x64 tanh sgd lr 0.03 batch 64             15.01 /  34.24 cm   best epoch   19 of   20      14 s
+    64x64 tanh sgd lr 0.1 batch 64              10.44 /  22.80 cm   best epoch   19 of   20      13 s
+  hidden activation
+    64x64 tanh adam lr 0.001 batch 64            9.21 /  20.14 cm   best epoch   19 of   20      15 s
+    64x64 relu adam lr 0.001 batch 64            9.45 /  20.19 cm   best epoch   19 of   20      12 s
+    64x64 sigmoid adam lr 0.001 batch 64        12.31 /  27.27 cm   best epoch   19 of   20      13 s
+  architecture
+    32x32 tanh adam lr 0.001 batch 64           13.33 /  31.76 cm   best epoch   19 of   20      10 s
+    64x64 tanh adam lr 0.001 batch 64            9.21 /  20.14 cm   best epoch   19 of   20      15 s
+    128x128 tanh adam lr 0.001 batch 64          7.73 /  16.08 cm   best epoch   19 of   20      21 s
+    64 tanh adam lr 0.001 batch 64              11.08 /  26.44 cm   best epoch   19 of   20       9 s
+    128 tanh adam lr 0.001 batch 64              9.39 /  20.60 cm   best epoch   19 of   20      14 s
+  batch size
+    64x64 tanh adam lr 0.001 batch 32            8.98 /  19.16 cm   best epoch   19 of   20      16 s
+    64x64 tanh adam lr 0.001 batch 64            9.21 /  20.14 cm   best epoch   19 of   20      15 s
+    64x64 tanh adam lr 0.001 batch 256          11.93 /  26.99 cm   best epoch   19 of   20      12 s
+
+final 24 -> 24 network: 128x128 tanh adam lr 0.001 batch 64, 22808 weights (test set, 5000 poses x 8 feet)
+  foot error mean 7.70 cm, 95% 16.00 cm, max 44.4 cm
+  angle RMSE 9.46 deg (hip / thigh / knee 15.25 / 3.87 / 4.61)
+  feet within 10 cm of the hip axis: foot error 5.59 cm, hip RMSE 36.0 deg; elsewhere 8.02 cm, 8.3 deg
+
+per-leg 3 -> 3 network: 64x64 tanh adam lr 0.001 batch 512, 4611 weights (test set, 5000 poses x 8 feet)
+  foot error mean 1.91 cm, 95% 4.91 cm, max 11.6 cm
+  angle RMSE 3.09 deg (hip / thigh / knee 5.11 / 0.86 / 1.30)
+  feet within 10 cm of the hip axis: foot error 1.46 cm, hip RMSE 13.5 deg; elsewhere 1.98 cm, 1.5 deg
+
+per-leg network trained in 46 s, best epoch 19
